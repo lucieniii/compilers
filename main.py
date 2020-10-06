@@ -13,6 +13,10 @@ reserve_set = {'BEGIN': 'Begin', 'END': 'End', 'FOR': 'For', 'IF': 'If', 'THEN':
 stop_sgn = 'STOP'
 
 
+def print_std(s):
+    sys.stdout.write(s + '\n')
+
+
 def is_not_stop():
     if char == stop_sgn:
         return False
@@ -143,7 +147,7 @@ def trans_num():
 
 
 def error():
-    print('Unknown')
+    print_std('Unknown')
     exit(0)
 
 
@@ -191,7 +195,7 @@ def get_sym():
         symbol = 'Comma'
     else:
         error()
-    print(symbol)
+    print_std(symbol)
 
 
 if __name__ == '__main__':
