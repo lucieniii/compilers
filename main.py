@@ -171,7 +171,7 @@ def get_sym():
             getchar()
         retract()
         num = trans_num()
-        symbol = 'Int(' + token + ')'
+        symbol = 'Int(' + str(num) + ')'
     elif is_colon():
         getchar()
         if is_equ():
