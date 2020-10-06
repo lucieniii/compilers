@@ -9,7 +9,7 @@ i = 0
 length = 0
 
 blank_char_set = ['\n', '\r', '\t', ' ']
-reserve_set = {'BEGIN': 'begin', 'END': 'End', 'FOR': 'For', 'IF': 'If', 'THEN': 'Then', 'ELSE': 'Else'}
+reserve_set = {'BEGIN': 'Begin', 'END': 'End', 'FOR': 'For', 'IF': 'If', 'THEN': 'Then', 'ELSE': 'Else'}
 stop_sgn = 'STOP'
 
 
