@@ -5,6 +5,6 @@ frontend
 migrations
 *.py[cod]
 *$py.class
-
+testfile
 **/*.zip
 **/*.rar

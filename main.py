@@ -14,7 +14,7 @@ stop_sgn = 'STOP'
 
 
 def is_not_stop():
-    if char is stop_sgn:
+    if char == stop_sgn:
         return False
     else:
         return True
@@ -22,7 +22,7 @@ def is_not_stop():
 
 def getchar():
     global char, i
-    if i > length:
+    if i == length:
         char = stop_sgn
         return
     char = buffer[i]
@@ -171,7 +171,7 @@ def get_sym():
             getchar()
         retract()
         num = trans_num()
-        symbol = num
+        symbol = 'Int(' + token + ')'
     elif is_colon():
         getchar()
         if is_equ():
