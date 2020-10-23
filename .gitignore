@@ -8,3 +8,14 @@ migrations
 testfile
 **/*.zip
 **/*.rar
+
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+build
+bin
+
+
+hello.plc0
+result
