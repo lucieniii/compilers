@@ -1,206 +1,63 @@
-import sys
+m = [[1, -1, -1, -1, 1, 1],
+     [1, 1, -1, -1, 1, 1],
+     [1, 1, None, None, 1, 1],
+     [-1, -1, -1, -1, 0, None],
+     [1, 1, None, None, 1, 1],
+     [-1, -1, -1, -1, None, 0]]
+dic = {"+": 0, "*": 1, "i": 2, "(": 3, ")": 4, "#": 5}
+priority = {"+": 1, "*": 2, "i": 4, "(": 3, ")": 3, "#": 0}
 
-char = ''
-token = ''
-num = ''
-symbol = ''
-buffer = ''
+stack = None
+buffer = None
 i = 0
-length = 0
 
-blank_char_set = ['\n', '\r', '\t', ' ']
-reserve_set = {'BEGIN': 'Begin', 'END': 'End', 'FOR': 'For', 'IF': 'If', 'THEN': 'Then', 'ELSE': 'Else'}
-stop_sgn = 'STOP'
+s = "#"
 
 
-def print_std(s):
-    sys.stdout.write(s + '\n')
-
-
-def is_not_stop():
-    if char == stop_sgn:
-        return False
-    else:
-        return True
+def compare(in_stack, out_stack):
+    return m[dic[in_stack]][dic[out_stack]]
 
 
 def getchar():
-    global char, i
-    if i == length:
-        char = stop_sgn
-        return
-    char = buffer[i]
-    i += 1
-
-
-def clear_token():
-    global token
-    token = ''
-
-
-def is_blank():
-    global char
-    if char in blank_char_set:
-        return True
-    else:
-        return False
-
-
-def is_alpha():
-    return char.isalpha()
-
-
-def is_digit():
-    return char.isdigit()
-
-
-def is_letter():
-    return is_alpha() | is_digit()
-
-
-def is_colon():
-    if char is ':':
-        return True
-    else:
-        return False
-
-
-def is_comma():
-    if char is ',':
-        return True
-    else:
-        return False
-
-
-def is_semi():
-    if char is ';':
-        return True
-    else:
-        return False
-
-
-def is_equ():
-    if char is '=':
-        return True
-    else:
-        return False
-
-
-def is_plus():
-    if char is '+':
-        return True
-    else:
-        return False
-
-
-def is_minus():
-    if char is '-':
-        return True
-    else:
-        return False
-
-
-def is_divide():
-    if char is '/':
-        return True
-    else:
-        return False
-
-
-def is_star():
-    if char is '*':
-        return True
-    else:
-        return False
-
-
-def is_l_par():
-    if char is '(':
-        return True
-    else:
-        return False
-
-
-def is_r_par():
-    if char is ')':
-        return True
-    else:
-        return False
-
-
-def cat_token():
-    global token
-    token += char
-
-
-def retract():
     global i
-    i -= 1
+    try:
+        c = buffer[i]
+        i += 1
+        return c
+    except:
+        return None
 
 
-def reserver():
-    return reserve_set.get(token)
+def peek_char():
+    global i
+    try:
+        c = buffer[i]
+        return c
+    except:
+        return None
 
 
-def trans_num():
-    return int(token)
-
-
-def error():
-    print_std('Unknown')
+def error(msg):
+    print(msg)
     exit(0)
 
 
-def get_sym():
-    global symbol, num
-
-    clear_token()
-    getchar()
-    while is_blank() and is_not_stop():
-        getchar()
-    if not is_not_stop():
-        exit(0)
-    if is_alpha():
-        while is_letter() and is_not_stop():
-            cat_token()
-            getchar()
-        retract()
-        if reserver():
-            symbol = reserver()
-        else:
-            symbol = 'Ident(' + token + ')'
-    elif is_digit():
-        while is_digit() and is_not_stop():
-            cat_token()
-            getchar()
-        retract()
-        num = trans_num()
-        symbol = 'Int(' + str(num) + ')'
-    elif is_colon():
-        getchar()
-        if is_equ():
-            symbol = 'Assign'
-        else:
-            retract()
-            symbol = 'Colon'
-    elif is_plus():
-        symbol = 'Plus'
-    elif is_star():
-        symbol = 'Star'
-    elif is_l_par():
-        symbol = 'LParenthesis'
-    elif is_r_par():
-        symbol = 'RParenthesis'
-    elif is_comma():
-        symbol = 'Comma'
-    else:
-        error()
-    print_std(symbol)
+def success(msg):
+    print(msg)
 
 
-if __name__ == '__main__':
-    buffer = sys.stdin.read()
-    length = len(buffer)
-    while True:
-        get_sym()
+def push_stack_msg(c):
+    print("I" + c)
 
+
+def specification_left():
+    global s
+    s += "#"
+    length = len(s)
+    j = 0
+    k = 1
+    # while k < length:
+
+
+if __name__ == "__main__":
+    print(1)
