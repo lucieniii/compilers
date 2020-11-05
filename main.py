@@ -81,7 +81,7 @@ def analyse():
         if c not in dic.keys():
             error("E")
             '''
-                    if c == "i":
+            if c == "i":
             getchar()
             push_stack_msg(c)
             if peek_char() == "i":
@@ -124,12 +124,12 @@ def analyse():
                 success("R")
                 stack.push("E")
             else:
-                error("RE1")
+                error("RE")
         else:
             error("E")
 
 
 if __name__ == "__main__":
-    buffer = input()[:-1] + "#"
+    buffer = input() + "#"
     stack = Stack()
     analyse()
