@@ -71,7 +71,7 @@ class Stack:
             self.top -= 1
             return c
         except:
-            error("RE3")
+            error("RE")
 
 
 def analyse():
@@ -100,10 +100,10 @@ def analyse():
                     success("R")
                     stack.push("E")
                 else:
-                    error("RE2")
+                    error("RE")
             else:
                 if stack.pop() != "E":
-                    error("REG")
+                    error("RE")
                 exit(0)
         elif cmp == 1:
             e1 = stack.pop()
@@ -113,13 +113,12 @@ def analyse():
                 success("R")
                 stack.push("E")
             else:
-                error("RE1")
+                error("RE")
         else:
             error("E")
 
 
 if __name__ == "__main__":
-    buffer = input() + "#"
-    # print(buffer)
+    buffer = input()[:-1] + "#"
     stack = Stack()
     analyse()
