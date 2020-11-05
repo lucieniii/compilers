@@ -130,6 +130,6 @@ def analyse():
 
 
 if __name__ == "__main__":
-    buffer = input() + "#"
+    buffer = input()[:-1] + "#"
     stack = Stack()
     analyse()
