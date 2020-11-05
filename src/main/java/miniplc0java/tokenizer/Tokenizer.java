@@ -55,7 +55,7 @@ public class Tokenizer {
             c = it.nextChar();
             val *= 10;
             val += Integer.parseInt(String.valueOf(c));
-            if (val > 2147483647)
+            if (val > Integer.MAX_VALUE)
                 throw new TokenizeError(ErrorCode.IntegerOverflow, start);
         }
         Pos end = it.currentPos();
