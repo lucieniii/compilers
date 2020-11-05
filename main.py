@@ -78,12 +78,19 @@ def analyse():
 
     while True:
         c = peek_char()
-        if c == "i":
+        if c not in dic.keys():
+            error("E")
+            '''
+                    if c == "i":
             getchar()
             push_stack_msg(c)
+            if peek_char() == "i":
+                error("E")
             success("R")
             stack.push("E")
             continue
+            '''
+
         t = stack.stack_top_op()
         cmp = compare(t, c)
         if cmp == -1:
@@ -107,13 +114,17 @@ def analyse():
                 exit(0)
         elif cmp == 1:
             e1 = stack.pop()
+            if e1 == "i":
+                success("R")
+                stack.push("E")
+                continue
             op = stack.pop()
             e2 = stack.pop()
             if e1 == e2 == "E" and op in ["*", "+"]:
                 success("R")
                 stack.push("E")
             else:
-                error("RE")
+                error("RE1")
         else:
             error("E")
 
