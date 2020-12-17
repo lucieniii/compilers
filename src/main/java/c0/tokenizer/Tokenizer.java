@@ -188,9 +188,10 @@ public class Tokenizer {
             case '*' -> new Token(TokenType.MUL, '*', start, it.currentPos());
             case '/' -> {
                 if (it.peekChar() == '/') {
+                    it.nextChar();
                     StringBuilder cmt = new StringBuilder();
                     char c;
-                    while (it.nextChar() != '\n') {
+                    while (it.peekChar() != '\n') {
                         c = it.nextChar();
                         cmt.append(c);
                     }
