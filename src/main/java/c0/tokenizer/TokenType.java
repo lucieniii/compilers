@@ -115,5 +115,60 @@ public enum TokenType {
     /* ---------注释--------- */
 
     /* 注释 */
-    COMMENT;
+    COMMENT,
+
+    /* ---------类型标识--------- */
+
+    /* 有符号整型标识 */
+    INT,
+
+    /* 空类型标识 */
+    VOID,
+
+    /* 浮点数标识 */
+    DOUBLE;
+
+    @Override
+    public String toString() {
+        return switch (this) {
+            case EQ -> "EQ";
+            case GE -> "GE";
+            case GT -> "GT";
+            case LE -> "LE";
+            case LT -> "LT";
+            case DIV -> "DIV";
+            case INT -> "INT";
+            case MUL -> "MUL";
+            case NEQ -> "NEQ";
+            case PLUS -> "PLUS";
+            case VOID -> "VOID";
+            case ARROW -> "ARROW";
+            case AS_KW -> "AS_KW";
+            case COLON -> "COLON";
+            case COMMA -> "COMMA";
+            case FN_KW -> "FN_KW";
+            case IDENT -> "IDENT";
+            case IF_KW -> "IF_KW";
+            case MINUS -> "MINUS";
+            case ASSIGN -> "ASSIGN";
+            case DOUBLE -> "DOUBLE";
+            case LET_KW -> "LET_KW";
+            case COMMENT -> "COMMENT";
+            case ELSE_KW -> "ELSE_KW";
+            case L_BRACE -> "L_BRACE";
+            case L_PAREN -> "L_PAREN";
+            case R_BRACE -> "R_BRACE";
+            case R_PAREN -> "R_PAREN";
+            case BREAK_KW -> "BREAK_KW";
+            case CONST_KW -> "CONST_KW";
+            case WHILE_KW -> "WHILE_KW";
+            case RETURN_KW -> "RETURN_KW";
+            case SEMICOLON -> "SEMICOLON";
+            case CONTINUE_KW -> "CONTINUE_KW";
+            case CHAR_LITERAL -> "CHAR_LITERAL";
+            case UINT_LITERAL -> "UINT_LITERAL";
+            case DOUBLE_LITERAL -> "DOUBLE_LITERAL";
+            case STRING_LITERAL -> "STRING_LITERAL";
+        };
+    }
 }
