@@ -59,14 +59,7 @@ public class Tokenizer {
     }
 
     private Token lexUIntOrDouble() throws TokenizeError {
-        // 请填空：
-        // 直到查看下一个字符不是数字为止:
-        // -- 前进一个字符，并存储这个字符
-        //
-        // 解析存储的字符串为无符号整数
-        // 解析成功则返回无符号整数类型的token，否则返回编译错误
-        //
-        // Token 的 Value 应填写数字的值
+
         Pos start = it.currentPos();
         StringBuilder strNum = new StringBuilder();
         boolean isInt = true;
@@ -128,15 +121,7 @@ public class Tokenizer {
     }
 
     private Token lexIdentOrKeyword() throws TokenizeError {
-        // 请填空：
-        // 直到查看下一个字符不是数字或字母为止:
-        // -- 前进一个字符，并存储这个字符
-        //
-        // 尝试将存储的字符串解释为关键字
-        // -- 如果是关键字，则返回关键字类型的 token
-        // -- 否则，返回标识符
-        //
-        // Token 的 Value 应填写标识符或关键字的字符串
+
         Pos start = it.currentPos();
         StringBuilder tmp = new StringBuilder();
         char c;
