@@ -126,7 +126,12 @@ public enum TokenType {
     VOID,
 
     /* 浮点数标识 */
-    DOUBLE;
+    DOUBLE,
+
+    /* ---------自定义--------- */
+
+    /* 文件末尾 */
+    EOF;
 
     @Override
     public String toString() {
@@ -137,6 +142,7 @@ public enum TokenType {
             case LE -> "LE";
             case LT -> "LT";
             case DIV -> "DIV";
+            case EOF -> "EOF";
             case INT -> "INT";
             case MUL -> "MUL";
             case NEQ -> "NEQ";

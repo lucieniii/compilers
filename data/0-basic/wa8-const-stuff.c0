@@ -1,0 +1,6 @@
+const i: int = 1000;
+
+fn main() -> void {
+    putint(i);
+    i = 100;
+}

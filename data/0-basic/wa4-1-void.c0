@@ -1,0 +1,7 @@
+fn my_void_fn() -> void {
+    putint(1);
+}
+
+fn main() -> void {
+    let i: void;
+}
