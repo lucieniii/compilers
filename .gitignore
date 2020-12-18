@@ -4,3 +4,4 @@ out
 onetest
 *.out
 *.c0lex
+*.c0Ana
