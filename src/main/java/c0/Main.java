@@ -10,27 +10,24 @@ import java.util.Scanner;
 
 public class Main {
 
-    /*public static void copyDirectory(String sourceDir, String targetDir) throws IOException {
-        File src = new File(sourceDir);
-        File dst = new File(targetDir);
-        if (src.isDirectory()) {
-            if (!dst.mkdir()) {
-                System.out.println("Failed to create directory " + dst.getPath());
-                return;
-            }
-            String[] fileList = src.list();
+    public static void traverseData(String sourceDir) throws IOException {
+        File pwd = new File(sourceDir);
+
+        if (pwd.isDirectory()) {
+            String[] fileList = pwd.list();
             if (fileList == null)
                 return;
-            for (String filename : fileList)
-                copyDirectory(sourceDir + "/" + filename, targetDir + "/" + filename);
-        } else TestCopyFile.copyFile(sourceDir, targetDir);
-    }*/
+            for (String filename : fileList) {
+                if (!filename.equals(".DS_Store"))
+                    traverseData(sourceDir + "/" + filename);
+            }
+        } else testData(sourceDir);
+    }
 
-    public static void main(String[] args) {
+    public static void testData(String inputFileName) throws IOException {
 
-        String inputFileName = "data/0-basic/wa1-1-empty.c0";
-        String outputFileName = "result.out";
-
+        if (!inputFileName.split("\\.")[1].equals("c0"))
+            return;
         InputStream input;
 
         try {
@@ -42,16 +39,19 @@ public class Main {
             return;
         }
 
-
         PrintStream output;
-
+        String outputFileName = inputFileName.split("\\.")[0] + ".c0lex";
         try {
             output = new PrintStream(new FileOutputStream(outputFileName));
         } catch (FileNotFoundException e) {
-            System.err.println("Cannot open output file.");
-            e.printStackTrace();
-            System.exit(2);
-            return;
+            try{
+                File file = new File(outputFileName);
+                var temp = file.createNewFile();
+                output = new PrintStream(new FileOutputStream(outputFileName));
+            } catch(IOException ioe) {
+                ioe.printStackTrace();
+                return;
+            }
         }
 
         Scanner scanner;
@@ -69,14 +69,16 @@ public class Main {
                 tokens.add(token);
             }
         } catch (Exception e) {
-            // 遇到错误不输出，直接退出
             output.println(e);
-            System.exit(-1);
+            // System.exit(-1);
             return;
         }
         for (Token token : tokens) {
             output.println(token.toString());
         }
+    }
 
+    public static void main(String[] args) throws IOException {
+        traverseData("data");
     }
 }
