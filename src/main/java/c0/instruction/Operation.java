@@ -5,14 +5,14 @@ package main.java.c0.instruction;
  */
 public enum Operation {
 
-    NOP,
-    PUSH,
+    NOP, /* Need no arg. */
+    PUSH, /* Need no arg. */
     POP,
-    POP_N,
+    POP_N, /* Need no arg. */
     DUP,
-    LOC_A,
-    ARG_A,
-    GLOB_A,
+    LOC_A, /* Need no arg. */
+    ARG_A, /* Need no arg. */
+    GLOB_A, /* Need no arg. */
     LOAD_8,
     LOAD_16,
     LOAD_32,
@@ -23,7 +23,7 @@ public enum Operation {
     STORE_64,
     ALLOC,
     FREE,
-    STACK_ALLOC,
+    STACK_ALLOC, /* Need no arg. */
     ADD_I,
     SUB_I,
     MUL_I,
@@ -49,12 +49,12 @@ public enum Operation {
     SHR_L,
     SET_LT,
     SET_GT,
-    BR,
-    BR_FALSE,
-    BR_TRUE,
-    CALL,
+    BR, /* Need no arg. */
+    BR_FALSE, /* Need no arg. */
+    BR_TRUE, /* Need no arg. */
+    CALL, /* Need no arg. */
     RET,
-    CALL_NAME,
+    CALL_NAME, /* Need no arg. */
     SCAN_I,
     SCAN_C,
     SCAN_F,

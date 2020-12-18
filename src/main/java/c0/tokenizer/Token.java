@@ -42,10 +42,14 @@ public class Token {
     }
 
     public String getValueString() {
-        if (value instanceof Long || value instanceof String || value instanceof Character) {
+        if (value instanceof Long || value instanceof String) {
             return value.toString();
         } else if (value instanceof Double) {
             return String.valueOf(Double.doubleToRawLongBits((Double) value));
+        } else if (value instanceof Character) {
+            if (tokenType == TokenType.CHAR_LITERAL)
+                return String.valueOf((int) (char)value);
+            else return value.toString();
         }
         throw new Error("No suitable cast for token value.");
     }
@@ -55,6 +59,8 @@ public class Token {
             return (Long) value;
         } else if (value instanceof Double) {
             return Double.doubleToRawLongBits((Double) value);
+        } else if (value instanceof Character) {
+            return (long)(char)value;
         } else throw new Error("Can not get long value of a non-number token.");
     }
 
