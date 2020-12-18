@@ -268,6 +268,77 @@ public class Analyser {
         expect(TokenType.SEMICOLON);
     }
 
+    private void analyseStatement(String fnName, int level) throws CompileError {
+        Pos start = peek().getStartPos();
+
+        switch (peek().getTokenType()) {
+            case LET_KW, CONST_KW -> analyseDeclareStatement(fnName, level);
+            case L_BRACE -> analyseBlockStatement(fnName, level);
+            case IF_KW -> analyseIfStatement(fnName, level);
+            case WHILE_KW -> analyseWhileStatement(fnName, level);
+            //analyseContinueStatement
+            case CONTINUE_KW -> {
+                expect(TokenType.CONTINUE_KW);
+                expect(TokenType.SEMICOLON);
+            }
+            //analyseBreakStatement
+            case BREAK_KW -> {
+                expect(TokenType.BREAK_KW);
+                expect(TokenType.SEMICOLON);
+            }
+            //analyseReturnStatement
+            case RETURN_KW -> {
+                expect(TokenType.RETURN_KW);
+                if (!check(TokenType.SEMICOLON)) {
+                    analyseExpression();
+                } //todo: handle return value
+                expect(TokenType.SEMICOLON);
+            }
+            //analyseEmptyStatement
+            case SEMICOLON -> {
+                //todo: handle no op
+            }
+            //analyseExpressionStatement
+            default -> {
+                analyseExpression();
+                expect(TokenType.SEMICOLON);
+            }
+        }
+    }
+
+    private void analyseBlockStatement(String fnName, int level) throws CompileError {
+        Pos start = peek().getStartPos();
+
+        expect(TokenType.L_BRACE);
+        while (!check(TokenType.R_BRACE))
+            analyseStatement(fnName, level + 1);
+        expect(TokenType.R_BRACE);
+    }
+
+    private void analyseIfStatement(String fnName, int level) throws CompileError {
+        Pos start = peek().getStartPos();
+
+        expect(TokenType.IF_KW);
+        analyseExpression(); //todo: handle boolean
+        analyseBlockStatement(fnName, level + 1);
+        while (check(TokenType.ELSE_KW)) {
+            expect(TokenType.ELSE_KW);
+            if (check(TokenType.IF_KW)) {
+                expect(TokenType.IF_KW);
+                analyseExpression(); //todo: handle boolean
+            }
+            analyseBlockStatement(fnName, level + 1);
+        }
+    }
+
+    private void analyseWhileStatement(String fnName, int level) throws CompileError {
+        Pos start = peek().getStartPos();
+
+        expect(TokenType.WHILE_KW);
+        analyseExpression(); //todo: handle boolean
+        analyseBlockStatement(fnName, level + 1);
+    }
+
     private void analyseExpression() throws CompileError {
         Pos start = peek().getStartPos();
 
@@ -374,7 +445,7 @@ public class Analyser {
         if (!check(TokenType.INT) && !check(TokenType.DOUBLE) && !check(TokenType.VOID))
             throw new AnalyzeError(ErrorCode.InvalidFunctionReturnType, start);
         //todo: handle function type
-        analyseBlockStatement(name);
+        analyseBlockStatement(name, 1);
     }
 
     /**
@@ -409,9 +480,5 @@ public class Analyser {
         if (!check(TokenType.INT) && !check(TokenType.DOUBLE))
             throw new AnalyzeError(ErrorCode.InvalidParamType, start);
         //todo: handle function param type
-    }
-
-    private void analyseBlockStatement(String fnName) throws CompileError {
-
     }
 }
