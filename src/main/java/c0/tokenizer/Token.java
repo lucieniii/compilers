@@ -42,8 +42,10 @@ public class Token {
     }
 
     public String getValueString() {
-        if (value instanceof Integer || value instanceof String || value instanceof Character) {
+        if (value instanceof Long || value instanceof String || value instanceof Character) {
             return value.toString();
+        } else if (value instanceof Double) {
+            return String.valueOf(Double.doubleToRawLongBits((Double) value));
         }
         throw new Error("No suitable cast for token value.");
     }
@@ -86,7 +88,8 @@ public class Token {
         sb.append("Line: ").append(this.startPos.row).append(' ');
         sb.append("Column: ").append(this.startPos.col).append(' ');
         sb.append("Type: ").append(this.tokenType).append(' ');
-        sb.append("Value: ").append(this.value);
+        //sb.append("Value: ").append(this.value);
+        sb.append("Value: ").append(getValueString());
         return sb.toString();
     }
 
