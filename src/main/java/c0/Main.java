@@ -1,5 +1,7 @@
 package main.java.c0;
 
+import main.java.c0.analyser.Analyser;
+import main.java.c0.instruction.Instruction;
 import main.java.c0.util.*;
 import main.java.c0.tokenizer.*;
 
@@ -56,6 +58,7 @@ public class Main {
 
         Scanner scanner;
         scanner = new Scanner(input);
+
         var iter = new StringIter(scanner);
         var tokenizer = new Tokenizer(iter);
 
@@ -76,9 +79,25 @@ public class Main {
         for (Token token : tokens) {
             output.println(token.toString());
         }
+    /*
+        var analyzer = new Analyser(tokenizer);
+        List<Instruction> instructions;
+        try {
+            instructions = analyzer.analyse();
+        } catch (Exception e) {
+            // 遇到错误不输出，直接退出
+            output.println(e);
+            // System.exit(0);
+            return;
+        }
+        output.println("Analysis accomplished!");
+        /*for (Instruction instruction : instructions) {
+            output.println(instruction.toString());
+        }*/
     }
 
     public static void main(String[] args) throws IOException {
         traverseData("data");
+        //traverseData("onetest");
     }
 }

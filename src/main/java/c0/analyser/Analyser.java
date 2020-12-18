@@ -11,6 +11,7 @@ import java.util.*;
 
 public class Analyser {
 
+    //todo: 赋值表达式的值是void
     Tokenizer tokenizer;
     ArrayList<Instruction> instructions;
 
@@ -242,7 +243,8 @@ public class Analyser {
         if (!check(TokenType.INT) && !check(TokenType.DOUBLE))
             throw new AnalyzeError(ErrorCode.InvalidVariableType, start);
         //todo: handle variable type
-        if (nextIf(TokenType.EQ) != null)
+        Token type = next();
+        if (nextIf(TokenType.ASSIGN) != null)
             analyseExpression(); //todo: 参数、返回值未知
         expect(TokenType.SEMICOLON);
     }
@@ -262,8 +264,9 @@ public class Analyser {
         expect(TokenType.COLON);
         if (!check(TokenType.INT) && !check(TokenType.DOUBLE))
             throw new AnalyzeError(ErrorCode.InvalidVariableType, start);
+        Token type = next(); //todo: handle type
         //todo: handle variable type
-        expect(TokenType.EQ);
+        expect(TokenType.ASSIGN);
         analyseExpression(); //todo: 参数、返回值未知
         expect(TokenType.SEMICOLON);
     }
@@ -354,8 +357,8 @@ public class Analyser {
                 //todo: handle symbol
                 switch (peek().getTokenType()) {
                     //analyseAssignExpression
-                    case EQ -> {
-                        expect(TokenType.EQ);
+                    case ASSIGN -> {
+                        expect(TokenType.ASSIGN);
                         analyseExpression();
                         //todo: handle assign
                     }
@@ -385,6 +388,7 @@ public class Analyser {
             }
             //analyseGroupExpression
             case L_PAREN -> {
+                expect(TokenType.L_PAREN);
                 analyseExpression();
                 expect(TokenType.R_PAREN);
             }
@@ -406,9 +410,9 @@ public class Analyser {
             //analyseAsExpression
             case AS_KW -> {
                 expect(TokenType.AS_KW);
-                Token type = next(); //todo: handle type
                 if (!check(TokenType.INT) && !check(TokenType.DOUBLE))
                     throw new AnalyzeError(ErrorCode.InvalidType, start);
+                Token type = next(); //todo: handle type
                 analyseAdvanceExpression();
             }
         }
@@ -420,8 +424,10 @@ public class Analyser {
      * @throws CompileError
      */
     private void analyseCallParamList(String fnName) throws CompileError {
-        Pos start = peekedToken.getStartPos();
+        Pos start = peek().getStartPos();
 
+        if (check(TokenType.R_PAREN))
+            return;
         analyseExpression();
         while (nextIf(TokenType.COMMA) != null)
             analyseExpression();
@@ -441,9 +447,9 @@ public class Analyser {
         analyseParamList(name);
         expect(TokenType.R_PAREN);
         expect(TokenType.ARROW);
-        Token type = next();
         if (!check(TokenType.INT) && !check(TokenType.DOUBLE) && !check(TokenType.VOID))
             throw new AnalyzeError(ErrorCode.InvalidFunctionReturnType, start);
+        Token type = next();
         //todo: handle function type
         analyseBlockStatement(name, 1);
     }
@@ -456,6 +462,8 @@ public class Analyser {
     private void analyseParamList(String fnName) throws CompileError {
         Pos start = peek().getStartPos();
 
+        if (check(TokenType.R_PAREN))
+            return;
         analyseParam(fnName);
         while (nextIf(TokenType.COMMA) != null)
             analyseParam(fnName);
@@ -476,9 +484,9 @@ public class Analyser {
         String name = expect(TokenType.IDENT).getValueString();
         //todo: handle symbol
         expect(TokenType.COLON);
-        Token type = next();
         if (!check(TokenType.INT) && !check(TokenType.DOUBLE))
             throw new AnalyzeError(ErrorCode.InvalidParamType, start);
+        Token type = next();
         //todo: handle function param type
     }
 }

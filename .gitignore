@@ -1,5 +1,6 @@
 .DS_Store
 .idea
 out
+onetest
 *.out
 *.c0lex

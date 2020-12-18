@@ -128,6 +128,32 @@ public enum TokenType {
     /* 浮点数标识 */
     DOUBLE,
 
+    /* ---------库函数--------- */
+
+    /* 读入一个有符号整数 */
+    GET_INT,
+
+    /* 读入一个浮点数 */
+    GET_DOUBLE,
+
+    /* 读入一个字符 */
+    GET_CHAR,
+
+    /* 输出一个整数 */
+    PUT_INT,
+
+    /* 输出一个浮点数 */
+    PUT_DOUBLE,
+
+    /* 输出一个字符 */
+    PUT_CHAR,
+
+    /* 将编号为这个整数的全局常量看作字符串输出 */
+    PUT_STR,
+
+    /* 输出一个换行 */
+    PUT_LN,
+
     /* ---------自定义--------- */
 
     /* 文件末尾 */
@@ -159,17 +185,25 @@ public enum TokenType {
             case ASSIGN -> "ASSIGN";
             case DOUBLE -> "DOUBLE";
             case LET_KW -> "LET_KW";
+            case PUT_LN -> "PUT_LN";
             case COMMENT -> "COMMENT";
             case ELSE_KW -> "ELSE_KW";
+            case GET_INT -> "GET_INT";
             case L_BRACE -> "L_BRACE";
             case L_PAREN -> "L_PAREN";
+            case PUT_INT -> "PUT_INT";
+            case PUT_STR -> "PUT_STR";
             case R_BRACE -> "R_BRACE";
             case R_PAREN -> "R_PAREN";
             case BREAK_KW -> "BREAK_KW";
             case CONST_KW -> "CONST_KW";
+            case GET_CHAR -> "GET_CHAR";
+            case PUT_CHAR -> "PUT_CHAR";
             case WHILE_KW -> "WHILE_KW";
             case RETURN_KW -> "RETURN_KW";
             case SEMICOLON -> "SEMICOLON";
+            case GET_DOUBLE -> "GET_DOUBLE";
+            case PUT_DOUBLE -> "PUT_DOUBLE";
             case CONTINUE_KW -> "CONTINUE_KW";
             case CHAR_LITERAL -> "CHAR_LITERAL";
             case UINT_LITERAL -> "UINT_LITERAL";

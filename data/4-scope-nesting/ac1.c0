@@ -1,12 +1,23 @@
 fn main() -> void {
-    let a1: int = 1;
-    let a2: int = 3;
-    putint(a2);
+    let i: int = 1;
+    putint(i);
     putln();
-
-    let a3: int = a1 + a2;
-    putint(a3);
-    putln();
-    putint(a2);
-    putln();
+    i = i + 1;
+    {
+        i = i + 1;
+        putint(i);
+        putln();
+        {
+            let i: int = 999;
+            putint(i);
+            putln();
+            i = i + 1;
+            {
+                putint(i);
+                putln();
+            }
+        }
+        putint(i);
+        putln();
+    }
 }

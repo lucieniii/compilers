@@ -38,7 +38,10 @@ public class Tokenizer {
         } else if (peek == '\'') {
             return lexChar();
         } else {
-            return lexOperatorOrCommentOrUnknown();
+            Token t = lexOperatorOrCommentOrUnknown();
+            if (t.getTokenType() == TokenType.COMMENT)
+                return nextToken();
+            else return t;
         }
     }
 
@@ -153,6 +156,14 @@ public class Tokenizer {
             case "int" -> new Token(TokenType.INT, res, start, end);
             case "double" -> new Token(TokenType.DOUBLE, res, start, end);
             case "void" -> new Token(TokenType.VOID, res, start, end);
+            /*case "getint" -> new Token(TokenType.GET_INT, res, start, end);
+            case "getdouble" -> new Token(TokenType.GET_DOUBLE, res, start, end);
+            case "getchar" -> new Token(TokenType.GET_CHAR, res, start, end);
+            case "putint" -> new Token(TokenType.PUT_INT, res, start, end);
+            case "putdouble" -> new Token(TokenType.PUT_DOUBLE, res, start, end);
+            case "putchar" -> new Token(TokenType.PUT_CHAR, res, start, end);
+            case "putstr" -> new Token(TokenType.PUT_STR, res, start, end);
+            case "putln" -> new Token(TokenType.PUT_LN, res, start, end);*/
             default -> new Token(TokenType.IDENT, res, start, end);
         };
     }

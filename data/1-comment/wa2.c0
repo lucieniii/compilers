@@ -1,0 +1,3 @@
+fn main() -> void {
+    putstr("// this is not a comment
+}

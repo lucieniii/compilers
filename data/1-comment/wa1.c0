@@ -8,5 +8,5 @@ fn main()         // Hi!
     putint(i+j); // this prints out i + j
     // return 0;
     // we should not return here
-// } this is a fake end!
-} // this is real
+// } // unfortunately there's no ending brace
+// so this should fail
