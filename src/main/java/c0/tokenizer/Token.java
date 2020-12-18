@@ -50,6 +50,14 @@ public class Token {
         throw new Error("No suitable cast for token value.");
     }
 
+    public Long getValueLong() {
+        if (value instanceof Long) {
+            return (Long) value;
+        } else if (value instanceof Double) {
+            return Double.doubleToRawLongBits((Double) value);
+        } else throw new Error("Can not get long value of a non-number token.");
+    }
+
     public TokenType getTokenType() {
         return tokenType;
     }

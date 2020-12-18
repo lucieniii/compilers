@@ -4,21 +4,21 @@ import java.util.Objects;
 
 public class Instruction {
     private Operation opt;
-    Integer x;
+    Long x;
 
     public Instruction(Operation opt) {
         this.opt = opt;
-        this.x = 0;
+        this.x = 0L;
     }
 
-    public Instruction(Operation opt, Integer x) {
+    public Instruction(Operation opt, Long x) {
         this.opt = opt;
         this.x = x;
     }
 
     public Instruction() {
         this.opt = Operation.NOP;
-        this.x = 0;
+        this.x = 0L;
     }
 
     @Override
@@ -44,21 +44,21 @@ public class Instruction {
         this.opt = opt;
     }
 
-    public Integer getX() {
+    public Long getX() {
         return x;
     }
 
-    public void setX(Integer x) {
+    public void setX(Long x) {
         this.x = x;
     }
 
-    /*
+
     @Override
     public String toString() {
         return switch (this.opt) {
-            case ADD, DIV, ILL, MUL, SUB, WRT -> String.format("%s", this.opt);
-            case LIT, LOD, STO -> String.format("%s %s", this.opt, this.x);
-            default -> "ILL";
+            case PUSH, POP_N, LOC_A, ARG_A, GLOB_A, STACK_ALLOC, BR, BR_FALSE, BR_TRUE, CALL, CALL_NAME
+                    -> String.format("%s %s", this.opt, this.x);
+            default -> String.format("%s", this.opt);
         };
-    }*/
+    }
 }
