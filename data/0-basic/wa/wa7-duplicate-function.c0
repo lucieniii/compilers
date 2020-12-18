@@ -1,0 +1,3 @@
+fn foo() -> void {}
+fn foo() -> void {}
+fn main() -> void {}

@@ -1,0 +1,2 @@
+fn main() -> void {
+    putstr("this is a test
