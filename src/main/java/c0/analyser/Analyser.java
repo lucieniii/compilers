@@ -320,7 +320,7 @@ public class Analyser {
 
         switch (peek().getTokenType()) {
             case LET_KW, CONST_KW -> analyseDeclareStatement(fnName, level);
-            case L_BRACE -> analyseBlockStatement(fnName, level);
+            case L_BRACE -> analyseBlockStatement(fnName, level + 1);
             case IF_KW -> analyseIfStatement(fnName, level);
             case WHILE_KW -> analyseWhileStatement(fnName, level);
             //analyseContinueStatement
@@ -374,8 +374,11 @@ public class Analyser {
             if (check(TokenType.IF_KW)) {
                 expect(TokenType.IF_KW);
                 analyseExpression(); //todo: handle boolean
+                analyseBlockStatement(fnName, level + 1);
+            } else {
+                analyseBlockStatement(fnName, level + 1);
+                return;
             }
-            analyseBlockStatement(fnName, level + 1);
         }
     }
 
