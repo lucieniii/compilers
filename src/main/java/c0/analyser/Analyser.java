@@ -125,9 +125,9 @@ public class Analyser {
         return this.nextGlobalOffset++;
     }
 
-    private void duplicateSymbolCheck (Stack<SymbolEntry> stack, Token symbolIdent) throws AnalyzeError {
+    private void duplicateSymbolCheck (Stack<SymbolEntry> stack, Token symbolIdent, int level) throws AnalyzeError {
         for (SymbolEntry exist: stack)
-            if (!exist.isString && exist.ident.getValueString().equals(symbolIdent.getValueString()))
+            if (!exist.isString && exist.level == level && exist.ident.getValueString().equals(symbolIdent.getValueString()))
                 throw new AnalyzeError(ErrorCode.DuplicateDeclaration, symbolIdent.getStartPos());
     }
 
@@ -140,9 +140,9 @@ public class Analyser {
      * @param isConstant    是否是常量
      * @throws AnalyzeError 如果重复定义了则抛异常
      */
-    private void addVariableSymbol(Token ident, Token type, int level, boolean isConstant, boolean isDeclared) throws AnalyzeError {
-        duplicateSymbolCheck(level == 0 ? globalSymbolStack : symbolStack, ident);
-        SymbolEntry symbol = new SymbolEntry(ident, type, level, isConstant, isDeclared, level == 0 ? getNextGlobalVariableOffset() : getNextVariableOffset());
+    private void addVariableSymbol(Token ident, Token type, int level, boolean isConstant, boolean isInitialized) throws AnalyzeError {
+        duplicateSymbolCheck(level == 0 ? globalSymbolStack : symbolStack, ident, level);
+        SymbolEntry symbol = new SymbolEntry(ident, type, level, isConstant, isInitialized, level == 0 ? getNextGlobalVariableOffset() : getNextVariableOffset());
         symbolStack.push(symbol);
     }
 
@@ -151,11 +151,10 @@ public class Analyser {
      *
      * @param ident         变量标识符
      * @param type          变量类型
-     * @param curPos        当前 token 的位置（报错用）
      * @throws AnalyzeError 如果重复定义了则抛异常
      */
-    private void addFunctionSymbol (Token ident, Token type, Pos curPos) throws AnalyzeError {
-        duplicateSymbolCheck(globalSymbolStack, ident);
+    private void addFunctionSymbol (Token ident, Token type) throws AnalyzeError {
+        duplicateSymbolCheck(globalSymbolStack, ident, 0);
         SymbolEntry func = new SymbolEntry(ident, type, getNextGlobalVariableOffset());
         this.instructions = func.getInstructions();
         globalSymbolStack.push(func);
@@ -186,19 +185,44 @@ public class Analyser {
      */
     private SymbolEntry getSymbol(Token ident) throws AnalyzeError {
         SymbolEntry find = null;
-        for (SymbolEntry exist: symbolStack) {
+        for (SymbolEntry exist : symbolStack) {
             if (exist.ident.getValueString().equals(ident.getValueString()))
                 find = exist;
         }
         if (find == null) {
-            for (SymbolEntry exist: globalSymbolStack) {
+            for (SymbolEntry exist : globalSymbolStack) {
                 if (!exist.isString && exist.ident.getValueString().equals(ident.getValueString()))
                     find = exist;
             }
         }
-        if (find == null)
-            throw new AnalyzeError(ErrorCode.NotDeclared, ident.getStartPos());
+        if (find == null) {
+            switch (ident.getValueString()) {
+                case "putchar", "putint", "putdouble", "putln", "putstr"
+                        -> {
+                    addFunctionSymbol(ident, new Token(TokenType.VOID, "void", ident.getStartPos(), ident.getEndPos()));
+                    find = getSymbol(ident);
+                }
+                case "getchar", "getint" -> {
+                    addFunctionSymbol(ident, new Token(TokenType.INT, "int", ident.getStartPos(), ident.getEndPos()));
+                    find = getSymbol(ident);
+                }
+                case "getdouble" -> {
+                    addFunctionSymbol(ident, new Token(TokenType.DOUBLE, "double", ident.getStartPos(), ident.getEndPos()));
+                    find = getSymbol(ident);
+                }
+                default -> throw new AnalyzeError(ErrorCode.NotDeclared, ident.getStartPos());
+            }
+        }
         return find;
+    }
+
+    /**
+     * 将上一块符号栈弹出
+     * @param level     当前块的阶级
+     */
+    private void evictSymbolBlock(int level) {
+        while (!symbolStack.empty() && symbolStack.peek().level == level)
+            symbolStack.pop();
     }
 
     /**
@@ -255,13 +279,14 @@ public class Analyser {
         Pos start = peek().getStartPos();
 
         expect(TokenType.LET_KW);
-        String name = expect(TokenType.IDENT).getValueString();
+        Token ident = expect(TokenType.IDENT);
         //todo: handle symbol
         expect(TokenType.COLON);
         if (!check(TokenType.INT) && !check(TokenType.DOUBLE))
             throw new AnalyzeError(ErrorCode.InvalidVariableType, start);
         //todo: handle variable type
         Token type = next();
+        addVariableSymbol(ident, type, level, false, false);
         if (nextIf(TokenType.ASSIGN) != null)
             analyseExpression(); //todo: 参数、返回值未知
         expect(TokenType.SEMICOLON);
@@ -277,15 +302,16 @@ public class Analyser {
         Pos start = peek().getStartPos();
 
         expect(TokenType.CONST_KW);
-        String name = expect(TokenType.IDENT).getValueString();
+        Token ident = expect(TokenType.IDENT);
         //todo: handle symbol
         expect(TokenType.COLON);
         if (!check(TokenType.INT) && !check(TokenType.DOUBLE))
             throw new AnalyzeError(ErrorCode.InvalidVariableType, start);
-        Token type = next(); //todo: handle type
-        //todo: handle variable type
+        Token type = next();
+        //todo: handle type
         expect(TokenType.ASSIGN);
         analyseExpression(); //todo: 参数、返回值未知
+        addVariableSymbol(ident, type, level, true, true);
         expect(TokenType.SEMICOLON);
     }
 
@@ -332,8 +358,9 @@ public class Analyser {
 
         expect(TokenType.L_BRACE);
         while (!check(TokenType.R_BRACE))
-            analyseStatement(fnName, level + 1);
+            analyseStatement(fnName, level);
         expect(TokenType.R_BRACE);
+        evictSymbolBlock(level);
     }
 
     private void analyseIfStatement(String fnName, int level) throws CompileError {
@@ -371,8 +398,9 @@ public class Analyser {
                 //todo: 转换为相反数
             }
             case IDENT -> {
-                String name = expect(TokenType.IDENT).getValueString();
+                Token ident = expect(TokenType.IDENT);
                 //todo: handle symbol
+                SymbolEntry symbol = getSymbol(ident);
                 switch (peek().getTokenType()) {
                     //analyseAssignExpression
                     case ASSIGN -> {
@@ -384,7 +412,7 @@ public class Analyser {
                     case L_PAREN -> {
                         expect(TokenType.L_PAREN);
                         //todo: handle call
-                        analyseCallParamList(name);
+                        analyseCallParamList(ident.getValueString());
                         expect(TokenType.R_PAREN);
                     }
                     //analyseIdentExpression
@@ -401,8 +429,9 @@ public class Analyser {
             }
             //analyseLiteralExpression
             case STRING_LITERAL -> {
-                String value = next().getValueString();
-                //todo: handle value
+                Token strIdent = next();
+                //todo: handle string value
+                addStringSymbol(strIdent);
             }
             //analyseGroupExpression
             case L_PAREN -> {
@@ -459,52 +488,56 @@ public class Analyser {
         Pos start = peek().getStartPos();
 
         expect(TokenType.FN_KW);
-        String name = expect(TokenType.IDENT).getValueString();
+        Token ident = expect(TokenType.IDENT);
         //todo: handle symbol
         expect(TokenType.L_PAREN);
-        analyseParamList(name);
+        analyseParamList(ident.getValueString(), 1);
         expect(TokenType.R_PAREN);
         expect(TokenType.ARROW);
         if (!check(TokenType.INT) && !check(TokenType.DOUBLE) && !check(TokenType.VOID))
             throw new AnalyzeError(ErrorCode.InvalidFunctionReturnType, start);
         Token type = next();
+        addFunctionSymbol(ident, type);
         //todo: handle function type
-        analyseBlockStatement(name, 1);
+        analyseBlockStatement(ident.getValueString(), 1);
     }
 
     /**
      * <function param list> ::= <function param> (<COMMA> <function param>)*
      * @param fnName
+     * @param level
      * @throws CompileError
      */
-    private void analyseParamList(String fnName) throws CompileError {
+    private void analyseParamList(String fnName, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         if (check(TokenType.R_PAREN))
             return;
-        analyseParam(fnName);
+        analyseParam(fnName, level);
         while (nextIf(TokenType.COMMA) != null)
-            analyseParam(fnName);
+            analyseParam(fnName, level);
     }
 
     /**
      * <function param> ::= <CONST>? <IDENT> <COLON> <TYPE>
      * @param fnName
+     * @param level
      * @throws CompileError
      */
-    private void analyseParam(String fnName) throws CompileError {
+    private void analyseParam(String fnName, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         //check if the param is a constant
         boolean isConst = false;
         if (nextIf(TokenType.CONST_KW) != null)
             isConst = true;
-        String name = expect(TokenType.IDENT).getValueString();
+        Token ident = expect(TokenType.IDENT);
         //todo: handle symbol
         expect(TokenType.COLON);
         if (!check(TokenType.INT) && !check(TokenType.DOUBLE))
             throw new AnalyzeError(ErrorCode.InvalidParamType, start);
         Token type = next();
         //todo: handle function param type
+        addVariableSymbol(ident, type, level, isConst, true);
     }
 }

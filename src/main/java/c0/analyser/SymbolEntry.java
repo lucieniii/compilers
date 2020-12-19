@@ -133,5 +133,19 @@ public class SymbolEntry {
     public void setStackOffset(int stackOffset) {
         this.stackOffset = stackOffset;
     }
+
+    @Override
+    public String toString() {
+        return "SymbolEntry{" +
+                "ident=" + ident +
+                ", type=" + type +
+                ", level=" + level +
+                ", stackOffset=" + stackOffset +
+                ", isFunction=" + isFunction +
+                ", isConstant=" + isConstant +
+                ", isInitialized=" + isInitialized +
+                ", isString=" + isString +
+                '}';
+    }
 }
 

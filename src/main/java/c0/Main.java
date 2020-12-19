@@ -42,7 +42,7 @@ public class Main {
         }
 
         PrintStream output;
-        String outputFileName = inputFileName.split("\\.")[0] + ".c0lex";
+        String outputFileName = inputFileName.split("\\.")[0] + ".c0Ana";
         try {
             output = new PrintStream(new FileOutputStream(outputFileName));
         } catch (FileNotFoundException e) {
@@ -61,7 +61,7 @@ public class Main {
 
         var iter = new StringIter(scanner);
         var tokenizer = new Tokenizer(iter);
-
+/*
         var tokens = new ArrayList<Token>();
         try {
             while (true) {
@@ -79,11 +79,11 @@ public class Main {
         for (Token token : tokens) {
             output.println(token.toString());
         }
-    /*
+    */
         var analyzer = new Analyser(tokenizer);
         List<Instruction> instructions;
         try {
-            instructions = analyzer.analyse();
+            analyzer.analyse();
         } catch (Exception e) {
             // 遇到错误不输出，直接退出
             output.println(e);
