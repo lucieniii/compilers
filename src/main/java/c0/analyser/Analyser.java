@@ -11,7 +11,7 @@ import java.util.*;
 
 public class Analyser {
 
-    //todo: 赋值表达式的值是void
+    //todo:
     Tokenizer tokenizer;
     ArrayList<Instruction> instructions;
 
@@ -237,7 +237,7 @@ public class Analyser {
             switch (peek().getTokenType()) {
                 //<declare statement>
                 case LET_KW, CONST_KW -> {
-                    analyseDeclareStatement("_GLOBAL", 0);
+                    analyseDeclareStatement(new Token(TokenType.IDENT, "_GLOBAL", start, start), 0);
                 }
                 //<function>
                 case FN_KW -> {
@@ -252,18 +252,18 @@ public class Analyser {
     /**
      * <declare statement> ::= <let declare statement>|<const declare statement>
      * @throws CompileError
-     * @param name
+     * @param fnToken
      * @param level
      */
-    private void analyseDeclareStatement(String name, int level) throws CompileError {
+    private void analyseDeclareStatement(Token fnToken, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         switch (peek().getTokenType()) {
             case LET_KW -> {
-                analyseLetDeclareStatement(name, level);
+                analyseLetDeclareStatement(fnToken, level);
             }
             case CONST_KW -> {
-                analyseConstDeclareStatement(name, level);
+                analyseConstDeclareStatement(fnToken, level);
             }
             default -> throw new AnalyzeError(ErrorCode.InvalidDeclaration, start);
         }
@@ -272,10 +272,10 @@ public class Analyser {
     /**
      * <let declare statement> ::= <LET> <IDENT> <COLON> <TYPE> (<ASSIGN> <expression>)? <SEMICOLON>
      * @throws CompileError
-     * @param fnName
+     * @param fnToken
      * @param level
      */
-    private void analyseLetDeclareStatement(String fnName, int level) throws CompileError {
+    private void analyseLetDeclareStatement(Token fnToken, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         expect(TokenType.LET_KW);
@@ -287,18 +287,21 @@ public class Analyser {
         //todo: handle variable type
         Token type = next();
         addVariableSymbol(ident, type, level, false, false);
-        if (nextIf(TokenType.ASSIGN) != null)
-            analyseExpression(); //todo: 参数、返回值未知
+        if (nextIf(TokenType.ASSIGN) != null) {
+            start = peek().getStartPos();
+            if (analyseExpression() != type.getTokenType()) //todo: 参数、返回值未知
+                throw new AnalyzeError(ErrorCode.ConflictType, start);
+        }
         expect(TokenType.SEMICOLON);
     }
 
     /**
      * <let declare statement> ::= <CONST> <IDENT> <COLON> <TYPE> <ASSIGN> <expression> <SEMICOLON>
      * @throws CompileError
-     * @param fnName
+     * @param fnToken
      * @param level
      */
-    private void analyseConstDeclareStatement(String fnName, int level) throws CompileError {
+    private void analyseConstDeclareStatement(Token fnToken, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         expect(TokenType.CONST_KW);
@@ -310,19 +313,22 @@ public class Analyser {
         Token type = next();
         //todo: handle type
         expect(TokenType.ASSIGN);
-        analyseExpression(); //todo: 参数、返回值未知
+        start = peek().getStartPos();
+        if (analyseExpression() != type.getTokenType()) //todo: 参数、返回值未知
+            throw new AnalyzeError(ErrorCode.ConflictType, start);
         addVariableSymbol(ident, type, level, true, true);
         expect(TokenType.SEMICOLON);
     }
 
-    private void analyseStatement(String fnName, int level) throws CompileError {
+    private void analyseStatement(Token fnToken, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
+        SymbolEntry fnSymbol = getSymbol(fnToken);
         switch (peek().getTokenType()) {
-            case LET_KW, CONST_KW -> analyseDeclareStatement(fnName, level);
-            case L_BRACE -> analyseBlockStatement(fnName, level + 1);
-            case IF_KW -> analyseIfStatement(fnName, level);
-            case WHILE_KW -> analyseWhileStatement(fnName, level);
+            case LET_KW, CONST_KW -> analyseDeclareStatement(fnToken, level);
+            case L_BRACE -> analyseBlockStatement(fnToken, level + 1);
+            case IF_KW -> analyseIfStatement(fnToken, level);
+            case WHILE_KW -> analyseWhileStatement(fnToken, level);
             //analyseContinueStatement
             case CONTINUE_KW -> {
                 expect(TokenType.CONTINUE_KW);
@@ -336,9 +342,13 @@ public class Analyser {
             //analyseReturnStatement
             case RETURN_KW -> {
                 expect(TokenType.RETURN_KW);
+                start = peek().getStartPos();
+                TokenType retType = TokenType.VOID;
                 if (!check(TokenType.SEMICOLON)) {
-                    analyseExpression();
+                    retType = analyseExpression();
                 } //todo: handle return value
+                if (retType != fnSymbol.type.getTokenType())
+                    throw new AnalyzeError(ErrorCode.ConflictType, start);
                 expect(TokenType.SEMICOLON);
             }
             //analyseEmptyStatement
@@ -353,51 +363,52 @@ public class Analyser {
         }
     }
 
-    private void analyseBlockStatement(String fnName, int level) throws CompileError {
+    private void analyseBlockStatement(Token fnToken, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         expect(TokenType.L_BRACE);
         while (!check(TokenType.R_BRACE))
-            analyseStatement(fnName, level);
+            analyseStatement(fnToken, level);
         expect(TokenType.R_BRACE);
         evictSymbolBlock(level);
     }
 
-    private void analyseIfStatement(String fnName, int level) throws CompileError {
+    private void analyseIfStatement(Token fnToken, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         expect(TokenType.IF_KW);
         analyseExpression(); //todo: handle boolean
-        analyseBlockStatement(fnName, level + 1);
+        analyseBlockStatement(fnToken, level + 1);
         while (check(TokenType.ELSE_KW)) {
             expect(TokenType.ELSE_KW);
             if (check(TokenType.IF_KW)) {
                 expect(TokenType.IF_KW);
                 analyseExpression(); //todo: handle boolean
-                analyseBlockStatement(fnName, level + 1);
+                analyseBlockStatement(fnToken, level + 1);
             } else {
-                analyseBlockStatement(fnName, level + 1);
+                analyseBlockStatement(fnToken, level + 1);
                 return;
             }
         }
     }
 
-    private void analyseWhileStatement(String fnName, int level) throws CompileError {
+    private void analyseWhileStatement(Token fnToken, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         expect(TokenType.WHILE_KW);
         analyseExpression(); //todo: handle boolean
-        analyseBlockStatement(fnName, level + 1);
+        analyseBlockStatement(fnToken, level + 1);
     }
 
-    private void analyseExpression() throws CompileError {
+    private TokenType analyseExpression() throws CompileError {
         Pos start = peek().getStartPos();
 
+        TokenType type;
         switch (peek().getTokenType()) {
             //analyseNegateExpression
             case MINUS -> {
                 expect(TokenType.MINUS);
-                analyseExpression();
+                type = analyseExpression();
                 //todo: 转换为相反数
             }
             case IDENT -> {
@@ -408,25 +419,34 @@ public class Analyser {
                     //analyseAssignExpression
                     case ASSIGN -> {
                         expect(TokenType.ASSIGN);
-                        analyseExpression();
+                        if (symbol.isConstant)
+                            throw new AnalyzeError(ErrorCode.AssignToConstant, ident.getStartPos());
                         //todo: handle assign
+                        if (symbol.type.getTokenType() != analyseExpression())
+                            throw new AnalyzeError(ErrorCode.ConflictType, ident.getStartPos());
+                        type = TokenType.VOID;
                     }
                     //analyseCallExpression
                     case L_PAREN -> {
                         expect(TokenType.L_PAREN);
                         //todo: handle call
-                        analyseCallParamList(ident.getValueString());
+                        analyseCallParamList(ident);
                         expect(TokenType.R_PAREN);
+                        type = symbol.type.getTokenType();
                     }
                     //analyseIdentExpression
                     default -> {
                         //todo: handle symbol?
-
+                        type = symbol.type.getTokenType();
                     }
                 }
             }
             //analyseLiteralExpression
             case UINT_LITERAL, DOUBLE_LITERAL, CHAR_LITERAL -> {
+                switch (peek().getTokenType()) {
+                    case UINT_LITERAL, CHAR_LITERAL -> type = TokenType.INT;
+                    default -> type = TokenType.DOUBLE;
+                }
                 long value = next().getValueLong();
                 //todo: handle value
             }
@@ -435,45 +455,63 @@ public class Analyser {
                 Token strIdent = next();
                 //todo: handle string value
                 addStringSymbol(strIdent);
+                type = TokenType.STRING_LITERAL;
             }
             //analyseGroupExpression
             case L_PAREN -> {
                 expect(TokenType.L_PAREN);
-                analyseExpression();
+                type = analyseExpression();
                 expect(TokenType.R_PAREN);
             }
             default -> throw new AnalyzeError(ErrorCode.InvalidExpression, start);
         }
-        analyseAdvanceExpression();
+        TokenType advType = analyseAdvanceExpression(type);
+        if (advType == TokenType.EOE)
+            return type;
+        else
+            return advType;
     }
 
-    private void analyseAdvanceExpression() throws CompileError {
+    private TokenType analyseAdvanceExpression(TokenType type) throws CompileError {
         Pos start = peek().getStartPos();
 
         switch (peek().getTokenType()) {
             //analyseOperatorExpression
             case PLUS, MINUS, MUL, DIV, EQ, NEQ, LT, GT, LE, GE -> {
                 Token op = next(); //todo: do calc
-                analyseExpression();
-                analyseAdvanceExpression();
+                start = peek().getStartPos();
+                if (type != analyseExpression())
+                    throw new AnalyzeError(ErrorCode.ConflictType, start);
+                TokenType advType = analyseAdvanceExpression(type);
+                if (advType == TokenType.EOE)
+                    return type;
+                if (type != analyseAdvanceExpression(type))
+                    throw new AnalyzeError(ErrorCode.ConflictType, start);
+                return type;
             }
             //analyseAsExpression
             case AS_KW -> {
                 expect(TokenType.AS_KW);
                 if (!check(TokenType.INT) && !check(TokenType.DOUBLE))
                     throw new AnalyzeError(ErrorCode.InvalidType, start);
-                Token type = next(); //todo: handle type
-                analyseAdvanceExpression();
+                Token asType = next(); //todo: handle type
+                boolean isNextAs = peek().getTokenType() == TokenType.AS_KW;
+                TokenType advType = analyseAdvanceExpression(asType.getTokenType());
+                if (isNextAs)
+                    return advType;
+                else
+                    return asType.getTokenType();
             }
         }
+        return TokenType.EOE;
     }
 
     /**
      * <call param list> ::= <expression> (<COMMA> <expression>)*
-     * @param fnName
+     * @param fnToken
      * @throws CompileError
      */
-    private void analyseCallParamList(String fnName) throws CompileError {
+    private void analyseCallParamList(Token fnToken) throws CompileError {
         Pos start = peek().getStartPos();
 
         if (check(TokenType.R_PAREN))
@@ -494,7 +532,7 @@ public class Analyser {
         Token ident = expect(TokenType.IDENT);
         //todo: handle symbol
         expect(TokenType.L_PAREN);
-        analyseParamList(ident.getValueString(), 1);
+        analyseParamList(ident, 1);
         expect(TokenType.R_PAREN);
         expect(TokenType.ARROW);
         if (!check(TokenType.INT) && !check(TokenType.DOUBLE) && !check(TokenType.VOID))
@@ -502,32 +540,32 @@ public class Analyser {
         Token type = next();
         addFunctionSymbol(ident, type);
         //todo: handle function type
-        analyseBlockStatement(ident.getValueString(), 1);
+        analyseBlockStatement(ident, 1);
     }
 
     /**
      * <function param list> ::= <function param> (<COMMA> <function param>)*
-     * @param fnName
+     * @param fnToken
      * @param level
      * @throws CompileError
      */
-    private void analyseParamList(String fnName, int level) throws CompileError {
+    private void analyseParamList(Token fnToken, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         if (check(TokenType.R_PAREN))
             return;
-        analyseParam(fnName, level);
+        analyseParam(fnToken, level);
         while (nextIf(TokenType.COMMA) != null)
-            analyseParam(fnName, level);
+            analyseParam(fnToken, level);
     }
 
     /**
      * <function param> ::= <CONST>? <IDENT> <COLON> <TYPE>
-     * @param fnName
+     * @param fnToken
      * @param level
      * @throws CompileError
      */
-    private void analyseParam(String fnName, int level) throws CompileError {
+    private void analyseParam(Token fnToken, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         //check if the param is a constant

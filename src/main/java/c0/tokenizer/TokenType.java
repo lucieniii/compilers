@@ -157,7 +157,10 @@ public enum TokenType {
     /* ---------自定义--------- */
 
     /* 文件末尾 */
-    EOF;
+    EOF,
+
+    /* 表达式末尾 */
+    EOE;
 
     @Override
     public String toString() {
@@ -168,6 +171,7 @@ public enum TokenType {
             case LE -> "LE";
             case LT -> "LT";
             case DIV -> "DIV";
+            case EOE -> "EOE";
             case EOF -> "EOF";
             case INT -> "INT";
             case MUL -> "MUL";
