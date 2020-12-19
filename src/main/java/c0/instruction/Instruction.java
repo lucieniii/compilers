@@ -3,20 +3,24 @@ package main.java.c0.instruction;
 import java.util.Objects;
 
 public class Instruction {
+    private int idx;
     private Operation opt;
-    Long x;
+    private long x;
 
-    public Instruction(Operation opt) {
+    public Instruction(int idx, Operation opt) {
+        this.idx = idx;
         this.opt = opt;
         this.x = 0L;
     }
 
-    public Instruction(Operation opt, Long x) {
+    public Instruction(int idx, Operation opt, long x) {
+        this.idx = idx;
         this.opt = opt;
         this.x = x;
     }
 
-    public Instruction() {
+    public Instruction(int idx) {
+        this.idx = idx;
         this.opt = Operation.NOP;
         this.x = 0L;
     }
@@ -48,10 +52,17 @@ public class Instruction {
         return x;
     }
 
-    public void setX(Long x) {
+    public void setX(long x) {
         this.x = x;
     }
 
+    public int getIdx() {
+        return idx;
+    }
+
+    public void setIdx(int idx) {
+        this.idx = idx;
+    }
 
     @Override
     public String toString() {

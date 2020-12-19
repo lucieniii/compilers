@@ -11,7 +11,7 @@ import java.util.*;
 
 public class Analyser {
 
-    //todo:
+    //todo: instructions.add(new Instruction(Operation.SUB));
     Tokenizer tokenizer;
     ArrayList<Instruction> instructions;
 
@@ -19,10 +19,12 @@ public class Analyser {
     Token peekedToken = null;
 
     /** 符号表 */
+    int paramCount = 0;
     Stack<SymbolEntry> symbolStack = new Stack<>();
     Stack<SymbolEntry> globalSymbolStack = new Stack<>();
 
     /** 下一个变量的栈偏移 */
+    int nextParamOffset = 0;
     int nextOffset = 0;
     int nextGlobalOffset = 0;
 
@@ -116,6 +118,10 @@ public class Analyser {
         return this.nextOffset++;
     }
 
+    private int getNextParamOffset() {
+        return this.nextParamOffset++;
+    }
+
     /**
      * 获取下一个全局变量的栈偏移
      *
@@ -140,10 +146,12 @@ public class Analyser {
      * @param isConstant    是否是常量
      * @throws AnalyzeError 如果重复定义了则抛异常
      */
-    private void addVariableSymbol(Token ident, Token type, int level, boolean isConstant, boolean isInitialized) throws AnalyzeError {
+    private SymbolEntry addVariableSymbol(Token ident, Token type, int level, boolean isFunctionParam, boolean isConstant, boolean isInitialized) throws AnalyzeError {
         duplicateSymbolCheck(level == 0 ? globalSymbolStack : symbolStack, ident, level);
-        SymbolEntry symbol = new SymbolEntry(ident, type, level, isConstant, isInitialized, level == 0 ? getNextGlobalVariableOffset() : getNextVariableOffset());
+        int stackOffset = level == 0 ? getNextGlobalVariableOffset() : (isFunctionParam ? getNextParamOffset() : getNextVariableOffset());
+        SymbolEntry symbol = new SymbolEntry(ident, type, level, isFunctionParam, isConstant, isInitialized, stackOffset);
         symbolStack.push(symbol);
+        return symbol;
     }
 
     /**
@@ -153,11 +161,12 @@ public class Analyser {
      * @param type          变量类型
      * @throws AnalyzeError 如果重复定义了则抛异常
      */
-    private void addFunctionSymbol (Token ident, Token type) throws AnalyzeError {
+    private SymbolEntry addFunctionSymbol (Token ident, Token type) throws AnalyzeError {
         duplicateSymbolCheck(globalSymbolStack, ident, 0);
         SymbolEntry func = new SymbolEntry(ident, type, getNextGlobalVariableOffset());
         this.instructions = func.getInstructions();
         globalSymbolStack.push(func);
+        return func;
     }
 
     /**
@@ -167,12 +176,12 @@ public class Analyser {
      * @throws AnalyzeError 如果重复定义了则抛异常
      * @return 字符串在全局变量中的编号
      */
-    private int addStringSymbol (Token ident) throws AnalyzeError {
+    private int addStringSymbol (Token ident, String strValue) throws AnalyzeError {
         int offset = getNextGlobalVariableOffset();
         for (SymbolEntry exist: globalSymbolStack)
             if (exist.isString && exist.ident.getValueString().equals(ident.getValueString()))
                 return exist.stackOffset;
-        SymbolEntry str = new SymbolEntry(ident, offset);
+        SymbolEntry str = new SymbolEntry(ident, strValue, offset);
         globalSymbolStack.push(str);
         return offset;
     }
@@ -221,8 +230,9 @@ public class Analyser {
      * @param level     当前块的阶级
      */
     private void evictSymbolBlock(int level) {
-        while (!symbolStack.empty() && symbolStack.peek().level == level)
-            symbolStack.pop();
+        while (!symbolStack.empty() && symbolStack.peek().level == level) {
+            int __ = symbolStack.pop().isFunctionParam ? this.paramCount-- : this.nextOffset--;
+        }
     }
 
     /**
@@ -241,6 +251,7 @@ public class Analyser {
                 }
                 //<function>
                 case FN_KW -> {
+                    paramCount = 0;
                     analyseFunction();
                 }
                 //ERROR
@@ -286,9 +297,10 @@ public class Analyser {
             throw new AnalyzeError(ErrorCode.InvalidVariableType, start);
         //todo: handle variable type
         Token type = next();
-        addVariableSymbol(ident, type, level, false, false);
+        SymbolEntry s = addVariableSymbol(ident, type, level, false, false, false);
         if (nextIf(TokenType.ASSIGN) != null) {
             start = peek().getStartPos();
+            instructions.add(new Instruction(instructions.size() - 1, Operation.ARG_A, s.stackOffset));
             if (analyseExpression() != type.getTokenType()) //todo: 参数、返回值未知
                 throw new AnalyzeError(ErrorCode.ConflictType, start);
         }
@@ -316,7 +328,7 @@ public class Analyser {
         start = peek().getStartPos();
         if (analyseExpression() != type.getTokenType()) //todo: 参数、返回值未知
             throw new AnalyzeError(ErrorCode.ConflictType, start);
-        addVariableSymbol(ident, type, level, true, true);
+        addVariableSymbol(ident, type, level, false, true, true);
         expect(TokenType.SEMICOLON);
     }
 
@@ -400,7 +412,7 @@ public class Analyser {
         analyseBlockStatement(fnToken, level + 1);
     }
 
-    private TokenType analyseExpression() throws CompileError {
+    private TokenType analyseExpression() throws CompileError { //todo: instruction分析到这
         Pos start = peek().getStartPos();
 
         TokenType type;
@@ -454,7 +466,7 @@ public class Analyser {
             case STRING_LITERAL -> {
                 Token strIdent = next();
                 //todo: handle string value
-                addStringSymbol(strIdent);
+                addStringSymbol(strIdent, strIdent.getValueString());
                 type = TokenType.STRING_LITERAL;
             }
             //analyseGroupExpression
@@ -579,6 +591,7 @@ public class Analyser {
             throw new AnalyzeError(ErrorCode.InvalidParamType, start);
         Token type = next();
         //todo: handle function param type
-        addVariableSymbol(ident, type, level, isConst, true);
+        addVariableSymbol(ident, type, level,true, isConst, true);
+        this.paramCount++;
     }
 }

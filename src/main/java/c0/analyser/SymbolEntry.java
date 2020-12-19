@@ -18,10 +18,12 @@ public class SymbolEntry {
     boolean isFunction;
     ArrayList<Instruction> instructions;
 
+    boolean isFunctionParam;
     boolean isConstant;
     boolean isInitialized;
 
     boolean isString;
+    String strValue;
 
     /**
      * Variable
@@ -32,10 +34,11 @@ public class SymbolEntry {
      * @param isDeclared
      * @param stackOffset
      */
-    public SymbolEntry(Token ident, Token type, int level, boolean isConstant, boolean isDeclared, int stackOffset) {
+    public SymbolEntry(Token ident, Token type, int level, boolean isFunctionParam, boolean isConstant, boolean isDeclared, int stackOffset) {
         this.ident = ident;
         this.type = type;
         this.level = level;
+        this.isFunctionParam = isFunctionParam;
         this.isConstant = isConstant;
         this.isInitialized = isDeclared;
         this.stackOffset = stackOffset;
@@ -43,6 +46,7 @@ public class SymbolEntry {
         this.isFunction = false;
         this.instructions = null;
         this.isString = false;
+        this.strValue = null;
     }
 
     /**
@@ -57,10 +61,12 @@ public class SymbolEntry {
         this.stackOffset = stackOffset;
 
         this.level = 0;
+        this.isFunctionParam = false;
         this.isConstant = false;
         this.isInitialized = false;
         this.isFunction = true;
         this.isString = false;
+        this.strValue = null;
 
         this.instructions = new ArrayList<>();
     }
@@ -70,10 +76,11 @@ public class SymbolEntry {
      * @param ident
      * @param stackOffset
      */
-    public SymbolEntry(Token ident, int stackOffset) {
+    public SymbolEntry(Token ident, String strValue, int stackOffset) {
         this.ident = ident;
         this.type = null;
         this.level = 0;
+        this.isFunctionParam = false;
         this.isConstant = false;
         this.isInitialized = false;
         this.stackOffset = stackOffset;
@@ -81,6 +88,7 @@ public class SymbolEntry {
         this.isFunction = false;
         this.instructions = null;
         this.isString = true;
+        this.strValue = strValue;
     }
 
     /**
