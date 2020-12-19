@@ -19,19 +19,19 @@ public class Analyser {
     Token peekedToken = null;
 
     /** 符号表 */
-    HashMap<String, SymbolEntry> symbolTable = new HashMap<>();
+    Stack<SymbolEntry> symbolStack = new Stack<>();
+    Stack<SymbolEntry> globalSymbolStack = new Stack<>();
 
     /** 下一个变量的栈偏移 */
     int nextOffset = 0;
+    int nextGlobalOffset = 0;
 
     public Analyser(Tokenizer tokenizer) {
         this.tokenizer = tokenizer;
-        this.instructions = new ArrayList<>();
     }
 
-    public List<Instruction> analyse() throws CompileError {
+    public void analyse() throws CompileError {
         analyseProgram();
-        return instructions;
     }
 
     /**
@@ -108,7 +108,7 @@ public class Analyser {
     }
 
     /**
-     * 获取下一个变量的栈偏移
+     * 获取下一个局部变量的栈偏移
      *
      * @return
      */
@@ -117,70 +117,88 @@ public class Analyser {
     }
 
     /**
-     * 添加一个符号
+     * 获取下一个全局变量的栈偏移
      *
-     * @param name          名字
-     * @param isInitialized 是否已赋值
+     * @return
+     */
+    private int getNextGlobalVariableOffset() {
+        return this.nextGlobalOffset++;
+    }
+
+    private void duplicateSymbolCheck (Stack<SymbolEntry> stack, Token symbolIdent) throws AnalyzeError {
+        for (SymbolEntry exist: stack)
+            if (!exist.isString && exist.ident.getValueString().equals(symbolIdent.getValueString()))
+                throw new AnalyzeError(ErrorCode.DuplicateDeclaration, symbolIdent.getStartPos());
+    }
+
+    /**
+     * 添加一个变量符号
+     *
+     * @param ident         变量标识符
+     * @param type          变量类型
+     * @param level         变量所在块的阶级 0为全局变量
      * @param isConstant    是否是常量
+     * @throws AnalyzeError 如果重复定义了则抛异常
+     */
+    private void addVariableSymbol(Token ident, Token type, int level, boolean isConstant, boolean isDeclared) throws AnalyzeError {
+        duplicateSymbolCheck(level == 0 ? globalSymbolStack : symbolStack, ident);
+        SymbolEntry symbol = new SymbolEntry(ident, type, level, isConstant, isDeclared, level == 0 ? getNextGlobalVariableOffset() : getNextVariableOffset());
+        symbolStack.push(symbol);
+    }
+
+    /**
+     * 添加一个函数符号
+     *
+     * @param ident         变量标识符
+     * @param type          变量类型
      * @param curPos        当前 token 的位置（报错用）
      * @throws AnalyzeError 如果重复定义了则抛异常
      */
-    private void addSymbol(String name, boolean isInitialized, boolean isConstant, Pos curPos) throws AnalyzeError {
-        if (this.symbolTable.get(name) != null) {
-            throw new AnalyzeError(ErrorCode.DuplicateDeclaration, curPos);
-        } else {
-            this.symbolTable.put(name, new SymbolEntry(isConstant, isInitialized, getNextVariableOffset()));
-        }
+    private void addFunctionSymbol (Token ident, Token type, Pos curPos) throws AnalyzeError {
+        duplicateSymbolCheck(globalSymbolStack, ident);
+        SymbolEntry func = new SymbolEntry(ident, type, getNextGlobalVariableOffset());
+        this.instructions = func.getInstructions();
+        globalSymbolStack.push(func);
     }
 
     /**
-     * 设置符号为已赋值
+     * 添加一个函数符号, 默认全局
      *
-     * @param name   符号名称
-     * @param curPos 当前位置（报错用）
-     * @throws AnalyzeError 如果未定义则抛异常
+     * @param ident         字符串ident
+     * @throws AnalyzeError 如果重复定义了则抛异常
+     * @return 字符串在全局变量中的编号
      */
-    private void declareSymbol(String name, Pos curPos) throws AnalyzeError {
-        var entry = this.symbolTable.get(name);
-        if (entry == null) {
-            throw new AnalyzeError(ErrorCode.NotDeclared, curPos);
-        } else {
-            entry.setInitialized(true);
-        }
+    private int addStringSymbol (Token ident) throws AnalyzeError {
+        int offset = getNextGlobalVariableOffset();
+        for (SymbolEntry exist: globalSymbolStack)
+            if (exist.isString && exist.ident.getValueString().equals(ident.getValueString()))
+                return exist.stackOffset;
+        SymbolEntry str = new SymbolEntry(ident, offset);
+        globalSymbolStack.push(str);
+        return offset;
     }
 
     /**
-     * 获取变量在栈上的偏移
-     *
-     * @param name   符号名
-     * @param curPos 当前位置（报错用）
-     * @return 栈偏移
-     * @throws AnalyzeError
+     * 尝试从符号栈中找到变量
+     * @param ident     符号标识
+     * @return          符号
+     * @throws AnalyzeError 没有找到符号
      */
-    private int getOffset(String name, Pos curPos) throws AnalyzeError {
-        var entry = this.symbolTable.get(name);
-        if (entry == null) {
-            throw new AnalyzeError(ErrorCode.NotDeclared, curPos);
-        } else {
-            return entry.getStackOffset();
+    private SymbolEntry getSymbol(Token ident) throws AnalyzeError {
+        SymbolEntry find = null;
+        for (SymbolEntry exist: symbolStack) {
+            if (exist.ident.getValueString().equals(ident.getValueString()))
+                find = exist;
         }
-    }
-
-    /**
-     * 获取变量是否是常量
-     *
-     * @param name   符号名
-     * @param curPos 当前位置（报错用）
-     * @return 是否为常量
-     * @throws AnalyzeError
-     */
-    private boolean isConstant(String name, Pos curPos) throws AnalyzeError {
-        var entry = this.symbolTable.get(name);
-        if (entry == null) {
-            throw new AnalyzeError(ErrorCode.NotDeclared, curPos);
-        } else {
-            return entry.isConstant();
+        if (find == null) {
+            for (SymbolEntry exist: globalSymbolStack) {
+                if (!exist.isString && exist.ident.getValueString().equals(ident.getValueString()))
+                    find = exist;
+            }
         }
+        if (find == null)
+            throw new AnalyzeError(ErrorCode.NotDeclared, ident.getStartPos());
+        return find;
     }
 
     /**
@@ -228,7 +246,7 @@ public class Analyser {
     }
 
     /**
-     * <let declare statement> ::= <LET> <IDENT> <COLON> <TYPE> (<EQUAL> <expression>)? <SEMICOLON>
+     * <let declare statement> ::= <LET> <IDENT> <COLON> <TYPE> (<ASSIGN> <expression>)? <SEMICOLON>
      * @throws CompileError
      * @param fnName
      * @param level
@@ -250,7 +268,7 @@ public class Analyser {
     }
 
     /**
-     * <let declare statement> ::= <CONST> <IDENT> <COLON> <TYPE> <EQUAL> <expression> <SEMICOLON>
+     * <let declare statement> ::= <CONST> <IDENT> <COLON> <TYPE> <ASSIGN> <expression> <SEMICOLON>
      * @throws CompileError
      * @param fnName
      * @param level
