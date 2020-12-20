@@ -420,8 +420,14 @@ public class Analyser {
             //analyseNegateExpression
             case MINUS -> {
                 expect(TokenType.MINUS);
+                start = peek().getStartPos();
                 type = analyseExpression();
                 //todo: 转换为相反数
+                if (type == TokenType.DOUBLE)
+                    instructions.add(new Instruction(instructions.size() - 1, Operation.NEG_F));
+                else if (type == TokenType.INT)
+                    instructions.add(new Instruction(instructions.size() - 1, Operation.NEG_I));
+                else throw new AnalyzeError(ErrorCode.InvalidNegative, start);
             }
             case IDENT -> {
                 Token ident = expect(TokenType.IDENT);
