@@ -19,12 +19,12 @@ public class Analyser {
     Token peekedToken = null;
 
     /** 符号表 */
-    int paramCount = 0;
     Stack<SymbolEntry> symbolStack = new Stack<>();
     Stack<SymbolEntry> globalSymbolStack = new Stack<>();
 
     /** 下一个变量的栈偏移 */
-    int nextParamOffset = 0;
+    int nextFuncOffset = 0;
+    int nextParamOffset = 1;
     int nextOffset = 0;
     int nextGlobalOffset = 0;
 
@@ -122,6 +122,10 @@ public class Analyser {
         return this.nextParamOffset++;
     }
 
+    private int getNextFuncOffset() {
+        return this.nextFuncOffset++;
+    }
+
     /**
      * 获取下一个全局变量的栈偏移
      *
@@ -163,7 +167,7 @@ public class Analyser {
      */
     private SymbolEntry addFunctionSymbol (Token ident, Token type) throws AnalyzeError {
         duplicateSymbolCheck(globalSymbolStack, ident, 0);
-        SymbolEntry func = new SymbolEntry(ident, type, getNextGlobalVariableOffset());
+        SymbolEntry func = new SymbolEntry(ident, type, getNextFuncOffset());
         this.instructions = func.getInstructions();
         globalSymbolStack.push(func);
         return func;
@@ -231,7 +235,7 @@ public class Analyser {
      */
     private void evictSymbolBlock(int level) {
         while (!symbolStack.empty() && symbolStack.peek().level == level) {
-            int __ = symbolStack.pop().isFunctionParam ? this.paramCount-- : this.nextOffset--;
+            int __ = symbolStack.pop().isFunctionParam ? this.nextParamOffset-- : this.nextOffset--;
         }
     }
 
@@ -241,17 +245,17 @@ public class Analyser {
      */
     private void analyseProgram() throws CompileError {
         Pos start = peek().getStartPos();
+        SymbolEntry _start = addFunctionSymbol(new Token(TokenType.IDENT, "_GLOBAL", start, start), new Token(TokenType.VOID, "_GLOBAL", start, start));
 
         while (!check(TokenType.EOF)) {
             //<declare statement>|<function>
             switch (peek().getTokenType()) {
                 //<declare statement>
                 case LET_KW, CONST_KW -> {
-                    analyseDeclareStatement(new Token(TokenType.IDENT, "_GLOBAL", start, start), 0);
+                    analyseDeclareStatement(_start, 0);
                 }
                 //<function>
                 case FN_KW -> {
-                    paramCount = 0;
                     analyseFunction();
                 }
                 //ERROR
@@ -263,18 +267,18 @@ public class Analyser {
     /**
      * <declare statement> ::= <let declare statement>|<const declare statement>
      * @throws CompileError
-     * @param fnToken
+     * @param fnSymbol
      * @param level
      */
-    private void analyseDeclareStatement(Token fnToken, int level) throws CompileError {
+    private void analyseDeclareStatement(SymbolEntry fnSymbol, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         switch (peek().getTokenType()) {
             case LET_KW -> {
-                analyseLetDeclareStatement(fnToken, level);
+                analyseLetDeclareStatement(fnSymbol, level);
             }
             case CONST_KW -> {
-                analyseConstDeclareStatement(fnToken, level);
+                analyseConstDeclareStatement(fnSymbol, level);
             }
             default -> throw new AnalyzeError(ErrorCode.InvalidDeclaration, start);
         }
@@ -283,10 +287,10 @@ public class Analyser {
     /**
      * <let declare statement> ::= <LET> <IDENT> <COLON> <TYPE> (<ASSIGN> <expression>)? <SEMICOLON>
      * @throws CompileError
-     * @param fnToken
+     * @param fnSymbol
      * @param level
      */
-    private void analyseLetDeclareStatement(Token fnToken, int level) throws CompileError {
+    private void analyseLetDeclareStatement(SymbolEntry fnSymbol, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         expect(TokenType.LET_KW);
@@ -310,10 +314,10 @@ public class Analyser {
     /**
      * <let declare statement> ::= <CONST> <IDENT> <COLON> <TYPE> <ASSIGN> <expression> <SEMICOLON>
      * @throws CompileError
-     * @param fnToken
+     * @param fnSymbol
      * @param level
      */
-    private void analyseConstDeclareStatement(Token fnToken, int level) throws CompileError {
+    private void analyseConstDeclareStatement(SymbolEntry fnSymbol, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         expect(TokenType.CONST_KW);
@@ -332,15 +336,14 @@ public class Analyser {
         expect(TokenType.SEMICOLON);
     }
 
-    private void analyseStatement(Token fnToken, int level) throws CompileError {
+    private void analyseStatement(SymbolEntry fnSymbol, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
-        SymbolEntry fnSymbol = getSymbol(fnToken);
         switch (peek().getTokenType()) {
-            case LET_KW, CONST_KW -> analyseDeclareStatement(fnToken, level);
-            case L_BRACE -> analyseBlockStatement(fnToken, level + 1);
-            case IF_KW -> analyseIfStatement(fnToken, level);
-            case WHILE_KW -> analyseWhileStatement(fnToken, level);
+            case LET_KW, CONST_KW -> analyseDeclareStatement(fnSymbol, level);
+            case L_BRACE -> analyseBlockStatement(fnSymbol, level + 1);
+            case IF_KW -> analyseIfStatement(fnSymbol, level);
+            case WHILE_KW -> analyseWhileStatement(fnSymbol, level);
             //analyseContinueStatement
             case CONTINUE_KW -> {
                 expect(TokenType.CONTINUE_KW);
@@ -375,44 +378,44 @@ public class Analyser {
         }
     }
 
-    private void analyseBlockStatement(Token fnToken, int level) throws CompileError {
+    private void analyseBlockStatement(SymbolEntry fnSymbol, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         expect(TokenType.L_BRACE);
         while (!check(TokenType.R_BRACE))
-            analyseStatement(fnToken, level);
+            analyseStatement(fnSymbol, level);
         expect(TokenType.R_BRACE);
         evictSymbolBlock(level);
     }
 
-    private void analyseIfStatement(Token fnToken, int level) throws CompileError {
+    private void analyseIfStatement(SymbolEntry fnSymbol, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         expect(TokenType.IF_KW);
         analyseExpression(); //todo: handle boolean
-        analyseBlockStatement(fnToken, level + 1);
+        analyseBlockStatement(fnSymbol, level + 1);
         while (check(TokenType.ELSE_KW)) {
             expect(TokenType.ELSE_KW);
             if (check(TokenType.IF_KW)) {
                 expect(TokenType.IF_KW);
                 analyseExpression(); //todo: handle boolean
-                analyseBlockStatement(fnToken, level + 1);
+                analyseBlockStatement(fnSymbol, level + 1);
             } else {
-                analyseBlockStatement(fnToken, level + 1);
+                analyseBlockStatement(fnSymbol, level + 1);
                 return;
             }
         }
     }
 
-    private void analyseWhileStatement(Token fnToken, int level) throws CompileError {
+    private void analyseWhileStatement(SymbolEntry fnSymbol, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         expect(TokenType.WHILE_KW);
         analyseExpression(); //todo: handle boolean
-        analyseBlockStatement(fnToken, level + 1);
+        analyseBlockStatement(fnSymbol, level + 1);
     }
 
-    private TokenType analyseExpression() throws CompileError { //todo: instruction分析到这
+    private TokenType analyseExpression() throws CompileError {
         Pos start = peek().getStartPos();
 
         TokenType type;
@@ -422,7 +425,6 @@ public class Analyser {
                 expect(TokenType.MINUS);
                 start = peek().getStartPos();
                 type = analyseExpression();
-                //todo: 转换为相反数
                 if (type == TokenType.DOUBLE)
                     instructions.add(new Instruction(instructions.size() - 1, Operation.NEG_F));
                 else if (type == TokenType.INT)
@@ -431,25 +433,33 @@ public class Analyser {
             }
             case IDENT -> {
                 Token ident = expect(TokenType.IDENT);
-                //todo: handle symbol
                 SymbolEntry symbol = getSymbol(ident);
                 switch (peek().getTokenType()) {
                     //analyseAssignExpression
                     case ASSIGN -> {
-                        expect(TokenType.ASSIGN);
-                        if (symbol.isConstant)
+                        if (symbol.isConstant || symbol.isFunction)
                             throw new AnalyzeError(ErrorCode.AssignToConstant, ident.getStartPos());
-                        //todo: handle assign
+                        if (symbol.isFunctionParam)
+                            instructions.add(new Instruction(instructions.size() - 1, Operation.ARG_A, symbol.stackOffset));
+                        else if (symbol.level == 0) {
+                            instructions.add(new Instruction(instructions.size() - 1, Operation.GLOB_A, symbol.stackOffset));
+                        } else {
+                            instructions.add(new Instruction(instructions.size() - 1, Operation.LOC_A, symbol.stackOffset));
+                        }
+                        expect(TokenType.ASSIGN);
+                        //todo: 字符串赋值
                         if (symbol.type.getTokenType() != analyseExpression())
                             throw new AnalyzeError(ErrorCode.ConflictType, ident.getStartPos());
+                        instructions.add(new Instruction(instructions.size() - 1, Operation.STORE_64));
                         type = TokenType.VOID;
                     }
                     //analyseCallExpression
                     case L_PAREN -> {
                         expect(TokenType.L_PAREN);
                         //todo: handle call
-                        analyseCallParamList(ident);
+                        analyseCallParamList(symbol);
                         expect(TokenType.R_PAREN);
+                        instructions.add(new Instruction(instructions.size() - 1, Operation.CALL, symbol.stackOffset));
                         type = symbol.type.getTokenType();
                     }
                     //analyseIdentExpression
@@ -526,17 +536,19 @@ public class Analyser {
 
     /**
      * <call param list> ::= <expression> (<COMMA> <expression>)*
-     * @param fnToken
+     * @param fnSymbol
      * @throws CompileError
      */
-    private void analyseCallParamList(Token fnToken) throws CompileError {
+    private void analyseCallParamList(SymbolEntry fnSymbol) throws CompileError {
         Pos start = peek().getStartPos();
 
         if (check(TokenType.R_PAREN))
             return;
-        analyseExpression();
-        while (nextIf(TokenType.COMMA) != null)
-            analyseExpression();
+        TokenType paramType = analyseExpression();
+        int curParam = 0;
+        while (nextIf(TokenType.COMMA) != null) {
+            analyseExpression(); //todo: now here
+        }
     }
 
     /**
@@ -548,42 +560,42 @@ public class Analyser {
 
         expect(TokenType.FN_KW);
         Token ident = expect(TokenType.IDENT);
+        SymbolEntry fnSymbol = addFunctionSymbol(ident, null);
         //todo: handle symbol
         expect(TokenType.L_PAREN);
-        analyseParamList(ident, 1);
+        analyseParamList(fnSymbol, 1);
         expect(TokenType.R_PAREN);
         expect(TokenType.ARROW);
         if (!check(TokenType.INT) && !check(TokenType.DOUBLE) && !check(TokenType.VOID))
             throw new AnalyzeError(ErrorCode.InvalidFunctionReturnType, start);
-        Token type = next();
-        addFunctionSymbol(ident, type);
+        fnSymbol.setType(next());
         //todo: handle function type
-        analyseBlockStatement(ident, 1);
+        analyseBlockStatement(fnSymbol, 1);
     }
 
     /**
      * <function param list> ::= <function param> (<COMMA> <function param>)*
-     * @param fnToken
+     * @param fnSymbol
      * @param level
      * @throws CompileError
      */
-    private void analyseParamList(Token fnToken, int level) throws CompileError {
+    private void analyseParamList(SymbolEntry fnSymbol, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         if (check(TokenType.R_PAREN))
             return;
-        analyseParam(fnToken, level);
+        analyseParam(fnSymbol, level);
         while (nextIf(TokenType.COMMA) != null)
-            analyseParam(fnToken, level);
+            analyseParam(fnSymbol, level);
     }
 
     /**
      * <function param> ::= <CONST>? <IDENT> <COLON> <TYPE>
-     * @param fnToken
+     * @param fnSymbol
      * @param level
      * @throws CompileError
      */
-    private void analyseParam(Token fnToken, int level) throws CompileError {
+    private void analyseParam(SymbolEntry fnSymbol, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         //check if the param is a constant
@@ -591,13 +603,11 @@ public class Analyser {
         if (nextIf(TokenType.CONST_KW) != null)
             isConst = true;
         Token ident = expect(TokenType.IDENT);
-        //todo: handle symbol
         expect(TokenType.COLON);
         if (!check(TokenType.INT) && !check(TokenType.DOUBLE))
             throw new AnalyzeError(ErrorCode.InvalidParamType, start);
         Token type = next();
-        //todo: handle function param type
+        fnSymbol.paramList.add(type.getTokenType());
         addVariableSymbol(ident, type, level,true, isConst, true);
-        this.paramCount++;
     }
 }

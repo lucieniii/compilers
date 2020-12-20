@@ -2,6 +2,7 @@ package main.java.c0.analyser;
 
 import main.java.c0.instruction.Instruction;
 import main.java.c0.tokenizer.Token;
+import main.java.c0.tokenizer.TokenType;
 
 import java.util.ArrayList;
 
@@ -16,6 +17,7 @@ public class SymbolEntry {
     int stackOffset;
 
     boolean isFunction;
+    ArrayList<TokenType> paramList;
     ArrayList<Instruction> instructions;
 
     boolean isFunctionParam;
@@ -44,6 +46,7 @@ public class SymbolEntry {
         this.stackOffset = stackOffset;
 
         this.isFunction = false;
+        this.paramList = null;
         this.instructions = null;
         this.isString = false;
         this.strValue = null;
@@ -69,6 +72,7 @@ public class SymbolEntry {
         this.strValue = null;
 
         this.instructions = new ArrayList<>();
+        this.paramList = new ArrayList<>();
     }
 
     /**
@@ -86,6 +90,7 @@ public class SymbolEntry {
         this.stackOffset = stackOffset;
 
         this.isFunction = false;
+        this.paramList = null;
         this.instructions = null;
         this.isString = true;
         this.strValue = strValue;
@@ -105,6 +110,10 @@ public class SymbolEntry {
 
     public String getStringValue() {
         return ident.getValueString();
+    }
+
+    public void setType(Token type) {
+        this.type = type;
     }
 
     /**
