@@ -430,6 +430,7 @@ public class Analyser {
                 addInstruction(new Instruction(instructions.size() - 1, Operation.BR, -whileBlock));
                 bcStack.push(instructions.get(instructions.size() - 1));
                 expect(TokenType.SEMICOLON);
+                silent = true;
             }
             //analyseBreakStatement
             case BREAK_KW -> {
@@ -439,6 +440,7 @@ public class Analyser {
                 addInstruction(new Instruction(instructions.size() - 1, Operation.BR, whileBlock));
                 bcStack.push(instructions.get(instructions.size() - 1));
                 expect(TokenType.SEMICOLON);
+                silent = true;
             }
             //analyseReturnStatement
             case RETURN_KW -> {
@@ -455,6 +457,7 @@ public class Analyser {
                 addInstruction(new Instruction(instructions.size() - 1, Operation.RET));
                 expect(TokenType.SEMICOLON);
                 ret = true;
+                silent = true;
             }
             //analyseEmptyStatement
             case SEMICOLON -> {
@@ -475,13 +478,9 @@ public class Analyser {
         Pos start = peek().getStartPos();
 
         expect(TokenType.L_BRACE);
-        int bcCount = bcStack.size(); //todo: break&continue后的代码省略
         boolean ret = false;
-        while (!check(TokenType.R_BRACE)) {
+        while (!check(TokenType.R_BRACE))
             ret = analyseStatement(fnSymbol, level) || ret;
-            if (bcCount < bcStack.size())
-                silent = true;
-        }
         silent = false;
         expect(TokenType.R_BRACE);
         evictSymbolBlock(level);
@@ -492,7 +491,6 @@ public class Analyser {
     private boolean analyseIfStatement(SymbolEntry fnSymbol, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
-        boolean haveElse = false;
         expect(TokenType.IF_KW);
         analyseExpression();
         addInstruction(new Instruction(instructions.size() - 1, Operation.BR_TRUE, 1));
@@ -504,20 +502,20 @@ public class Analyser {
 
         addInstruction(new Instruction(instructions.size() - 1, Operation.BR, -1));
         codeStart = instructions.size();
+        boolean ret2 = false;
         if (check(TokenType.ELSE_KW)) {
             expect(TokenType.ELSE_KW);
             start = peek().getStartPos();
             if (check(TokenType.L_BRACE)) {
-                ret = analyseBlockStatement(fnSymbol, level + 1) && ret;
-                haveElse = ret;
+                ret2 = analyseBlockStatement(fnSymbol, level + 1);
             } else if (check(TokenType.IF_KW)) {
-                ret = analyseIfStatement(fnSymbol, level) && ret;
+                ret2 = analyseIfStatement(fnSymbol, level);
             } else throw new AnalyzeError(ErrorCode.MissingBlockOrIfAfterElse, start);
         }
         codeEnd = instructions.size();
         instructions.get(codeStart - 1).setX(codeEnd - codeStart);
 
-        return haveElse || ret;
+        return ret && ret2;
     }
 
     private boolean analyseWhileStatement(SymbolEntry fnSymbol, int level) throws CompileError {
