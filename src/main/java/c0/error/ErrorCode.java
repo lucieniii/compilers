@@ -8,5 +8,5 @@ public enum ErrorCode {
     InvalidEscapeSeq, EmptyChar, UnknownToken, IncompleteStringOrChar, InvalidChar, DoubleInvalidOrOverflow,
     InvalidGlobalDeclaration, InvalidFunctionReturnType, InvalidDeclaration, InvalidParamType, InvalidVariableType,
     InvalidExpression, InvalidType, ConflictType, ConflictFunctionReturnType, InvalidNegative, InvalidFunctionParam,
-    NotAFunction, MissingBlockOrIfAfterElse,
+    NotAFunction, MissingBlockOrIfAfterElse, NotInWhile,
 }

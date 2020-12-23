@@ -10,10 +10,6 @@ import main.java.c0.util.Pos;
 import java.io.PrintStream;
 import java.util.*;
 
-enum StatementType {
-
-}
-
 public class Analyser {
 
     Tokenizer tokenizer;
@@ -44,7 +40,18 @@ public class Analyser {
         analyseProgram();
         ArrayList<Instruction> allInstructions = new ArrayList<>();
         for (SymbolEntry globalSymbol : globalSymbolStack) {
-            output.println(globalSymbol.ident.toString());
+            switch (globalSymbol.ident.getValueString()) {
+                case "putchar", "putint", "putdouble", "putln", "putstr" ,"getchar", "getint", "getdouble"
+                        -> output.println(globalSymbol.ident.toString());
+                default -> {
+                    if (!globalSymbol.isFunction)
+                        output.println(globalSymbol.ident.toString());
+                }
+            }
+        }
+        for (SymbolEntry globalSymbol : globalSymbolStack) {
+            if (globalSymbol.isFunction)
+                output.println(globalSymbol.ident.toString());
         }
         output.println();
         for (SymbolEntry globalSymbol : globalSymbolStack) {
@@ -187,7 +194,7 @@ public class Analyser {
      */
     private SymbolEntry addBaseFunctionSymbol (Token ident, Token type) throws AnalyzeError {
         duplicateSymbolCheck(globalSymbolStack, ident, 0);
-        SymbolEntry func = new SymbolEntry(ident, type, getNextFuncOffset());
+        SymbolEntry func = new SymbolEntry(ident, type, getNextGlobalVariableOffset());
         globalSymbolStack.push(func);
         return func;
     }
@@ -208,17 +215,17 @@ public class Analyser {
     }
 
     /**
-     * 添加一个函数符号, 默认全局
+     * 添加一个字符串, 默认全局
      *
      * @param ident         字符串ident
      * @throws AnalyzeError 如果重复定义了则抛异常
      * @return 字符串在全局变量中的编号
      */
     private int addStringSymbol (Token ident, String strValue) throws AnalyzeError {
-        int offset = getNextGlobalVariableOffset();
         for (SymbolEntry exist: globalSymbolStack)
             if (exist.isString && exist.ident.getValueString().equals(ident.getValueString()))
                 return exist.stackOffset;
+        int offset = getNextGlobalVariableOffset();
         SymbolEntry str = new SymbolEntry(ident, strValue, offset);
         globalSymbolStack.push(str);
         return offset;
@@ -396,12 +403,20 @@ public class Analyser {
             case WHILE_KW -> analyseWhileStatement(fnSymbol, level);
             //analyseContinueStatement
             case CONTINUE_KW -> {
+                if (whileBlock == 0)
+                    throw new AnalyzeError(ErrorCode.NotInWhile, start);
                 expect(TokenType.CONTINUE_KW);
+                instructions.add(new Instruction(instructions.size() - 1, Operation.BR, -whileBlock));
+                bcStack.push(instructions.get(instructions.size() - 1));
                 expect(TokenType.SEMICOLON);
             }
             //analyseBreakStatement
             case BREAK_KW -> {
+                if (whileBlock == 0)
+                    throw new AnalyzeError(ErrorCode.NotInWhile, start);
                 expect(TokenType.BREAK_KW);
+                instructions.add(new Instruction(instructions.size() - 1, Operation.BR, whileBlock));
+                bcStack.push(instructions.get(instructions.size() - 1));
                 expect(TokenType.SEMICOLON);
             }
             //analyseReturnStatement
@@ -482,11 +497,26 @@ public class Analyser {
         int codeStart = instructions.size();
         whileBlock++;
         analyseBlockStatement(fnSymbol, level + 1);
-        whileBlock--;
         int codeEnd = instructions.size();
         instructions.get(codeStart - 1).setX(codeEnd - codeStart + 1);
-        codeEnd = instructions.size();
         instructions.add(new Instruction(instructions.size() - 1, Operation.BR, booleanStart - codeEnd));
+        if (!bcStack.isEmpty()) {
+            int x = (int) (bcStack.peek().getX());
+            x = x > 0 ? x : -x;
+            while (x == whileBlock) {
+                Instruction bc = bcStack.pop();
+                if (bc.getX() < 0) { //continue
+                    bc.setX(booleanStart - bc.getIdx() - 1);
+                } else { //break
+                    bc.setX(codeEnd - bc.getIdx());
+                }
+                if (bcStack.isEmpty())
+                    break;
+                x = (int) (bcStack.peek().getX());
+                x = x > 0 ? x : -x;
+            }
+        }
+        whileBlock--;
     }
 
     /**

@@ -58,7 +58,7 @@ public class Instruction {
         this.opt = opt;
     }
 
-    public Long getX() {
+    public long getX() {
         return x;
     }
 
