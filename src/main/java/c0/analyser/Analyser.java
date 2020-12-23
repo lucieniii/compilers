@@ -32,6 +32,9 @@ public class Analyser {
     int whileBlock = 0;
     Stack<Instruction> bcStack = new Stack<>();
 
+    /** 是否输出指令 **/
+    boolean silent = false;
+
     public Analyser(Tokenizer tokenizer) {
         this.tokenizer = tokenizer;
     }
@@ -285,6 +288,11 @@ public class Analyser {
         }
     }
 
+    private void addInstruction(Instruction instruction) {
+        if (!silent)
+            instructions.add(instruction);
+    }
+
     /**
      * <program> ::= (<declare statement>|<function>)*
      * @throws CompileError
@@ -309,6 +317,13 @@ public class Analyser {
                 default -> throw new AnalyzeError(ErrorCode.InvalidGlobalDeclaration, start);
             }
         }
+        int mainId = -1;
+        for (SymbolEntry func : globalSymbolStack)
+            if (func.isFunction && func.ident.getValueString().equals("main"))
+                mainId = func.stackOffset;
+        if (mainId == -1)
+            throw new AnalyzeError(ErrorCode.NoMainFunction, start);
+        _start.instructions.add(new Instruction(_start.instructions.size() - 1, Operation.CALL, mainId, 0));
     }
 
     /**
@@ -350,13 +365,13 @@ public class Analyser {
         if (nextIf(TokenType.ASSIGN) != null) {
             start = peek().getStartPos();
             if (s.level == 0) {
-                instructions.add(new Instruction(instructions.size() - 1, Operation.GLOB_A, s.stackOffset));
+                addInstruction(new Instruction(instructions.size() - 1, Operation.GLOB_A, s.stackOffset));
             } else {
-                instructions.add(new Instruction(instructions.size() - 1, Operation.LOC_A, s.stackOffset));
+                addInstruction(new Instruction(instructions.size() - 1, Operation.LOC_A, s.stackOffset));
             }
             if (analyseExpression() != type.getTokenType())
                 throw new AnalyzeError(ErrorCode.ConflictType, start);
-            instructions.add(new Instruction(instructions.size() - 1, Operation.STORE_64));
+            addInstruction(new Instruction(instructions.size() - 1, Operation.STORE_64));
             s.setInitialized(true);
         }
 
@@ -382,31 +397,31 @@ public class Analyser {
         start = peek().getStartPos();
         SymbolEntry s = addVariableSymbol(ident, type, level, false, true, true);
         if (s.level == 0) {
-            instructions.add(new Instruction(instructions.size() - 1, Operation.GLOB_A, s.stackOffset));
+            addInstruction(new Instruction(instructions.size() - 1, Operation.GLOB_A, s.stackOffset));
         } else {
-            instructions.add(new Instruction(instructions.size() - 1, Operation.LOC_A, s.stackOffset));
+            addInstruction(new Instruction(instructions.size() - 1, Operation.LOC_A, s.stackOffset));
         }
         if (analyseExpression() != type.getTokenType())
             throw new AnalyzeError(ErrorCode.ConflictType, start);
-        instructions.add(new Instruction(instructions.size() - 1, Operation.STORE_64));
+        addInstruction(new Instruction(instructions.size() - 1, Operation.STORE_64));
         expect(TokenType.SEMICOLON);
     }
 
-    private void analyseStatement(SymbolEntry fnSymbol, int level) throws CompileError {
+    private boolean analyseStatement(SymbolEntry fnSymbol, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         boolean ret = false;
         switch (peek().getTokenType()) {
             case LET_KW, CONST_KW -> analyseDeclareStatement(fnSymbol, level);
-            case L_BRACE -> analyseBlockStatement(fnSymbol, level + 1);
-            case IF_KW -> analyseIfStatement(fnSymbol, level);
-            case WHILE_KW -> analyseWhileStatement(fnSymbol, level);
+            case L_BRACE -> ret = analyseBlockStatement(fnSymbol, level + 1);
+            case IF_KW -> ret = analyseIfStatement(fnSymbol, level);
+            case WHILE_KW -> ret = analyseWhileStatement(fnSymbol, level);
             //analyseContinueStatement
             case CONTINUE_KW -> {
                 if (whileBlock == 0)
                     throw new AnalyzeError(ErrorCode.NotInWhile, start);
                 expect(TokenType.CONTINUE_KW);
-                instructions.add(new Instruction(instructions.size() - 1, Operation.BR, -whileBlock));
+                addInstruction(new Instruction(instructions.size() - 1, Operation.BR, -whileBlock));
                 bcStack.push(instructions.get(instructions.size() - 1));
                 expect(TokenType.SEMICOLON);
             }
@@ -415,7 +430,7 @@ public class Analyser {
                 if (whileBlock == 0)
                     throw new AnalyzeError(ErrorCode.NotInWhile, start);
                 expect(TokenType.BREAK_KW);
-                instructions.add(new Instruction(instructions.size() - 1, Operation.BR, whileBlock));
+                addInstruction(new Instruction(instructions.size() - 1, Operation.BR, whileBlock));
                 bcStack.push(instructions.get(instructions.size() - 1));
                 expect(TokenType.SEMICOLON);
             }
@@ -424,14 +439,14 @@ public class Analyser {
                 expect(TokenType.RETURN_KW);
                 start = peek().getStartPos();
                 TokenType retType = TokenType.VOID;
-                instructions.add(new Instruction(instructions.size() - 1, Operation.ARG_A, 0));
+                addInstruction(new Instruction(instructions.size() - 1, Operation.ARG_A, 0));
                 if (!check(TokenType.SEMICOLON)) {
                     retType = analyseExpression();
                 }
                 if (retType != fnSymbol.type.getTokenType())
                     throw new AnalyzeError(ErrorCode.ConflictFunctionReturnType, start);
-                instructions.add(new Instruction(instructions.size() - 1, Operation.STORE_64));
-                instructions.add(new Instruction(instructions.size() - 1, Operation.RET));
+                addInstruction(new Instruction(instructions.size() - 1, Operation.STORE_64));
+                addInstruction(new Instruction(instructions.size() - 1, Operation.RET));
                 expect(TokenType.SEMICOLON);
                 ret = true;
             }
@@ -446,60 +461,73 @@ public class Analyser {
             }
         }
         if (Instruction.stackUse != 0)
-            instructions.add(new Instruction(instructions.size(), Operation.POP_N, Instruction.stackUse));
+            addInstruction(new Instruction(instructions.size(), Operation.POP_N, Instruction.stackUse));
+        return ret;
     }
 
-    private void analyseBlockStatement(SymbolEntry fnSymbol, int level) throws CompileError {
+    private boolean analyseBlockStatement(SymbolEntry fnSymbol, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         expect(TokenType.L_BRACE);
-        while (!check(TokenType.R_BRACE))
-            analyseStatement(fnSymbol, level);
+        int bcCount = bcStack.size(); //todo: break&continue后的代码省略
+        boolean ret = false;
+        while (!check(TokenType.R_BRACE)) {
+            ret = analyseStatement(fnSymbol, level) || ret;
+            if (bcCount < bcStack.size())
+                silent = true;
+        }
+        silent = false;
         expect(TokenType.R_BRACE);
         evictSymbolBlock(level);
+
+        return ret;
     }
 
-    private void analyseIfStatement(SymbolEntry fnSymbol, int level) throws CompileError {
+    private boolean analyseIfStatement(SymbolEntry fnSymbol, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
+        boolean haveElse = false;
         expect(TokenType.IF_KW);
         analyseExpression();
-        instructions.add(new Instruction(instructions.size() - 1, Operation.BR_TRUE, 1));
-        instructions.add(new Instruction(instructions.size() - 1, Operation.BR, -1));
+        addInstruction(new Instruction(instructions.size() - 1, Operation.BR_TRUE, 1));
+        addInstruction(new Instruction(instructions.size() - 1, Operation.BR, -1));
         int codeStart = instructions.size();
-        analyseBlockStatement(fnSymbol, level + 1);
+        boolean ret = analyseBlockStatement(fnSymbol, level + 1);
         int codeEnd = instructions.size();
         instructions.get(codeStart - 1).setX(codeEnd - codeStart + 1);
 
-        instructions.add(new Instruction(instructions.size() - 1, Operation.BR, -1));
+        addInstruction(new Instruction(instructions.size() - 1, Operation.BR, -1));
         codeStart = instructions.size();
         if (check(TokenType.ELSE_KW)) {
             expect(TokenType.ELSE_KW);
             start = peek().getStartPos();
             if (check(TokenType.L_BRACE)) {
-                analyseBlockStatement(fnSymbol, level + 1);
+                haveElse = true;
+                ret = analyseBlockStatement(fnSymbol, level + 1) && ret;
             } else if (check(TokenType.IF_KW)) {
-                analyseIfStatement(fnSymbol, level);
+                ret = analyseIfStatement(fnSymbol, level) && ret;
             } else throw new AnalyzeError(ErrorCode.MissingBlockOrIfAfterElse, start);
         }
         codeEnd = instructions.size();
         instructions.get(codeStart - 1).setX(codeEnd - codeStart);
+
+        return ret && haveElse;
     }
 
-    private void analyseWhileStatement(SymbolEntry fnSymbol, int level) throws CompileError {
+    private boolean analyseWhileStatement(SymbolEntry fnSymbol, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         expect(TokenType.WHILE_KW);
         int booleanStart = instructions.size();
         analyseExpression();
-        instructions.add(new Instruction(instructions.size() - 1, Operation.BR_TRUE, 1));
-        instructions.add(new Instruction(instructions.size() - 1, Operation.BR, -1));
+        addInstruction(new Instruction(instructions.size() - 1, Operation.BR_TRUE, 1));
+        addInstruction(new Instruction(instructions.size() - 1, Operation.BR, -1));
         int codeStart = instructions.size();
         whileBlock++;
-        analyseBlockStatement(fnSymbol, level + 1);
+        boolean ret = analyseBlockStatement(fnSymbol, level + 1);
         int codeEnd = instructions.size();
         instructions.get(codeStart - 1).setX(codeEnd - codeStart + 1);
-        instructions.add(new Instruction(instructions.size() - 1, Operation.BR, booleanStart - codeEnd));
+        addInstruction(new Instruction(instructions.size() - 1, Operation.BR, booleanStart - codeEnd));
         if (!bcStack.isEmpty()) {
             int x = (int) (bcStack.peek().getX());
             x = x > 0 ? x : -x;
@@ -517,6 +545,8 @@ public class Analyser {
             }
         }
         whileBlock--;
+
+        return ret;
     }
 
     /**
@@ -536,20 +566,20 @@ public class Analyser {
                     if (type != analyseCalculateExpression())
                         throw new AnalyzeError(ErrorCode.ConflictType, start);
                     switch (type) {
-                        case INT -> instructions.add(new Instruction(instructions.size() - 1, Operation.CMP_I));
-                        case DOUBLE -> instructions.add(new Instruction(instructions.size() - 1, Operation.CMP_F));
+                        case INT -> addInstruction(new Instruction(instructions.size() - 1, Operation.CMP_I));
+                        case DOUBLE -> addInstruction(new Instruction(instructions.size() - 1, Operation.CMP_F));
                     }
                     switch (op.getTokenType()) {
-                        case GT -> instructions.add(new Instruction(instructions.size() - 1, Operation.SET_GT));
-                        case LT -> instructions.add(new Instruction(instructions.size() - 1, Operation.SET_LT));
-                        case EQ -> instructions.add(new Instruction(instructions.size() - 1, Operation.NOT));
+                        case GT -> addInstruction(new Instruction(instructions.size() - 1, Operation.SET_GT));
+                        case LT -> addInstruction(new Instruction(instructions.size() - 1, Operation.SET_LT));
+                        case EQ -> addInstruction(new Instruction(instructions.size() - 1, Operation.NOT));
                         case GE -> {
-                            instructions.add(new Instruction(instructions.size() - 1, Operation.SET_LT));
-                            instructions.add(new Instruction(instructions.size() - 1, Operation.NOT));
+                            addInstruction(new Instruction(instructions.size() - 1, Operation.SET_LT));
+                            addInstruction(new Instruction(instructions.size() - 1, Operation.NOT));
                         }
                         case LE -> {
-                            instructions.add(new Instruction(instructions.size() - 1, Operation.SET_GT));
-                            instructions.add(new Instruction(instructions.size() - 1, Operation.NOT));
+                            addInstruction(new Instruction(instructions.size() - 1, Operation.SET_GT));
+                            addInstruction(new Instruction(instructions.size() - 1, Operation.NOT));
                         }
                     }
                 }
@@ -577,8 +607,8 @@ public class Analyser {
                     if (type != analyseTerm())
                         throw new AnalyzeError(ErrorCode.ConflictType, start);
                     switch (op.getTokenType()) {
-                        case PLUS -> instructions.add(new Instruction(instructions.size() - 1, type == TokenType.INT ? Operation.ADD_I : Operation.ADD_F));
-                        case MINUS -> instructions.add(new Instruction(instructions.size() - 1, type == TokenType.INT ? Operation.SUB_I : Operation.SUB_F));
+                        case PLUS -> addInstruction(new Instruction(instructions.size() - 1, type == TokenType.INT ? Operation.ADD_I : Operation.ADD_F));
+                        case MINUS -> addInstruction(new Instruction(instructions.size() - 1, type == TokenType.INT ? Operation.SUB_I : Operation.SUB_F));
                     }
                 }
                 default -> {
@@ -605,8 +635,8 @@ public class Analyser {
                     if (type != analyseFactor())
                         throw new AnalyzeError(ErrorCode.ConflictType, start);
                     switch (op.getTokenType()) {
-                        case MUL -> instructions.add(new Instruction(instructions.size() - 1, type == TokenType.INT ? Operation.MUL_I : Operation.MUL_F));
-                        case DIV -> instructions.add(new Instruction(instructions.size() - 1, type == TokenType.INT ? Operation.DIV_I : Operation.DIV_F));
+                        case MUL -> addInstruction(new Instruction(instructions.size() - 1, type == TokenType.INT ? Operation.MUL_I : Operation.MUL_F));
+                        case DIV -> addInstruction(new Instruction(instructions.size() - 1, type == TokenType.INT ? Operation.DIV_I : Operation.DIV_F));
                     }
                 }
                 default -> {
@@ -638,17 +668,17 @@ public class Analyser {
                         if (symbol.isConstant || symbol.isFunction)
                             throw new AnalyzeError(ErrorCode.AssignToConstant, ident.getStartPos());
                         if (symbol.isFunctionParam)
-                            instructions.add(new Instruction(instructions.size() - 1, Operation.ARG_A, symbol.stackOffset));
+                            addInstruction(new Instruction(instructions.size() - 1, Operation.ARG_A, symbol.stackOffset));
                         else if (symbol.level == 0) {
-                            instructions.add(new Instruction(instructions.size() - 1, Operation.GLOB_A, symbol.stackOffset));
+                            addInstruction(new Instruction(instructions.size() - 1, Operation.GLOB_A, symbol.stackOffset));
                         } else {
-                            instructions.add(new Instruction(instructions.size() - 1, Operation.LOC_A, symbol.stackOffset));
+                            addInstruction(new Instruction(instructions.size() - 1, Operation.LOC_A, symbol.stackOffset));
                         }
                         expect(TokenType.ASSIGN);
                         //todo: 字符串赋值
                         if (symbol.type.getTokenType() != analyseExpression())
                             throw new AnalyzeError(ErrorCode.ConflictType, ident.getStartPos());
-                        instructions.add(new Instruction(instructions.size() - 1, Operation.STORE_64));
+                        addInstruction(new Instruction(instructions.size() - 1, Operation.STORE_64));
                         type = TokenType.VOID;
                     }
                     //analyseCallExpression
@@ -656,14 +686,14 @@ public class Analyser {
                         if (!symbol.isFunction)
                             throw new AnalyzeError(ErrorCode.NotAFunction, start);
                         if (symbol.type.getTokenType() != TokenType.VOID)
-                            instructions.add(new Instruction(instructions.size() - 1, Operation.STACK_ALLOC, 1));
+                            addInstruction(new Instruction(instructions.size() - 1, Operation.STACK_ALLOC, 1));
                         expect(TokenType.L_PAREN);
                         analyseCallParamList(symbol);
                         expect(TokenType.R_PAREN);
                         switch (symbol.ident.getValueString()) {
                             case "putchar", "putint", "putdouble", "putln", "putstr" ,"getchar", "getint", "getdouble"
-                                    -> instructions.add(new Instruction(instructions.size() - 1, Operation.CALL_NAME, symbol.stackOffset, symbol.paramList.size()));
-                            default -> instructions.add(new Instruction(instructions.size() - 1, Operation.CALL, symbol.stackOffset, symbol.paramList.size()));
+                                    -> addInstruction(new Instruction(instructions.size() - 1, Operation.CALL_NAME, symbol.stackOffset, symbol.paramList.size()));
+                            default -> addInstruction(new Instruction(instructions.size() - 1, Operation.CALL, symbol.stackOffset, symbol.paramList.size()));
                         }
                         type = symbol.type.getTokenType();
                     }
@@ -671,13 +701,13 @@ public class Analyser {
                     default -> {
                         type = symbol.type.getTokenType();
                         if (symbol.isFunctionParam)
-                            instructions.add(new Instruction(instructions.size() - 1, Operation.ARG_A, symbol.stackOffset));
+                            addInstruction(new Instruction(instructions.size() - 1, Operation.ARG_A, symbol.stackOffset));
                         else if (symbol.level == 0) {
-                            instructions.add(new Instruction(instructions.size() - 1, Operation.GLOB_A, symbol.stackOffset));
+                            addInstruction(new Instruction(instructions.size() - 1, Operation.GLOB_A, symbol.stackOffset));
                         } else {
-                            instructions.add(new Instruction(instructions.size() - 1, Operation.LOC_A, symbol.stackOffset));
+                            addInstruction(new Instruction(instructions.size() - 1, Operation.LOC_A, symbol.stackOffset));
                         }
-                        instructions.add(new Instruction(instructions.size() - 1, Operation.LOAD_64));
+                        addInstruction(new Instruction(instructions.size() - 1, Operation.LOAD_64));
                     }
                 }
             }
@@ -688,12 +718,12 @@ public class Analyser {
                     default -> type = TokenType.DOUBLE;
                 }
                 long value = next().getValueLong();
-                instructions.add(new Instruction(instructions.size() - 1, Operation.PUSH, value));
+                addInstruction(new Instruction(instructions.size() - 1, Operation.PUSH, value));
             }
             //analyseLiteralExpression
             case STRING_LITERAL -> {
                 Token strIdent = next();
-                instructions.add(new Instruction(instructions.size() - 1, Operation.PUSH, addStringSymbol(strIdent, strIdent.getValueString())));
+                addInstruction(new Instruction(instructions.size() - 1, Operation.PUSH, addStringSymbol(strIdent, strIdent.getValueString())));
                 type = TokenType.STRING_LITERAL;//todo: 究竟是什么类型？
             }
             //analyseGroupExpression
@@ -707,9 +737,9 @@ public class Analyser {
         if (opposite) {
             start = peek().getStartPos();
             if (type == TokenType.DOUBLE)
-                instructions.add(new Instruction(instructions.size() - 1, Operation.NEG_F));
+                addInstruction(new Instruction(instructions.size() - 1, Operation.NEG_F));
             else if (type == TokenType.INT)
-                instructions.add(new Instruction(instructions.size() - 1, Operation.NEG_I));
+                addInstruction(new Instruction(instructions.size() - 1, Operation.NEG_I));
             else throw new AnalyzeError(ErrorCode.InvalidNegative, start);
         }
 
@@ -722,7 +752,7 @@ public class Analyser {
                 throw new AnalyzeError(ErrorCode.ConflictType, start);
             asType = next().getTokenType();
             if (asType != type) {
-                instructions.add(new Instruction(instructions.size() - 1, asType == TokenType.INT ? Operation.FTOI : Operation.ITOF));
+                addInstruction(new Instruction(instructions.size() - 1, asType == TokenType.INT ? Operation.FTOI : Operation.ITOF));
                 type = asType;
             }
         }
@@ -778,9 +808,12 @@ public class Analyser {
         if (retType.getTokenType() != TokenType.VOID)
             for (SymbolEntry param : symbolStack)
                 param.stackOffset++;
-        analyseBlockStatement(fnSymbol, 1);
-        if (instructions.get(instructions.size() - 1).getOpt() != Operation.RET)
-            instructions.add(new Instruction(instructions.size() - 1, Operation.RET));
+        start = peek().getStartPos();
+        boolean ret = analyseBlockStatement(fnSymbol, 1);
+        if (!ret)
+            if (retType.getTokenType() == TokenType.VOID)
+                addInstruction(new Instruction(instructions.size() - 1, Operation.RET));
+            else throw new AnalyzeError(ErrorCode.NoReturn, start);
     }
 
     /**
