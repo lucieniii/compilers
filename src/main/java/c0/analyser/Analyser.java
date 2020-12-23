@@ -53,8 +53,14 @@ public class Analyser {
             }
         }
         for (SymbolEntry globalSymbol : globalSymbolStack) {
-            if (globalSymbol.isFunction)
-                output.println(globalSymbol.ident.toString());
+            switch (globalSymbol.ident.getValueString()) {
+                case "putchar", "putint", "putdouble", "putln", "putstr" ,"getchar", "getint", "getdouble":
+                    break;
+                default:
+                    if (globalSymbol.isFunction)
+                        output.println(globalSymbol.ident.toString());
+
+            }
         }
         output.println();
         for (SymbolEntry globalSymbol : globalSymbolStack) {
@@ -502,8 +508,8 @@ public class Analyser {
             expect(TokenType.ELSE_KW);
             start = peek().getStartPos();
             if (check(TokenType.L_BRACE)) {
-                haveElse = true;
                 ret = analyseBlockStatement(fnSymbol, level + 1) && ret;
+                haveElse = ret;
             } else if (check(TokenType.IF_KW)) {
                 ret = analyseIfStatement(fnSymbol, level) && ret;
             } else throw new AnalyzeError(ErrorCode.MissingBlockOrIfAfterElse, start);
@@ -511,7 +517,7 @@ public class Analyser {
         codeEnd = instructions.size();
         instructions.get(codeStart - 1).setX(codeEnd - codeStart);
 
-        return ret && haveElse;
+        return haveElse || ret;
     }
 
     private boolean analyseWhileStatement(SymbolEntry fnSymbol, int level) throws CompileError {
@@ -810,10 +816,11 @@ public class Analyser {
                 param.stackOffset++;
         start = peek().getStartPos();
         boolean ret = analyseBlockStatement(fnSymbol, 1);
-        if (!ret)
+        if (!ret) {
             if (retType.getTokenType() == TokenType.VOID)
                 addInstruction(new Instruction(instructions.size() - 1, Operation.RET));
             else throw new AnalyzeError(ErrorCode.NoReturn, start);
+        }
     }
 
     /**
