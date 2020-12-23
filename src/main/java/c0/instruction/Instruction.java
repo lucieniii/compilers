@@ -6,17 +6,27 @@ public class Instruction {
     private int idx;
     private Operation opt;
     private long x;
+    public static int stackUse = 0;
 
     public Instruction(int idx, Operation opt) {
         this.idx = idx;
         this.opt = opt;
         this.x = 0L;
+        stackUse += opt.getUseStack(0);
     }
 
     public Instruction(int idx, Operation opt, long x) {
         this.idx = idx;
         this.opt = opt;
         this.x = x;
+        stackUse += opt.getUseStack((int) x);
+    }
+
+    public Instruction(int idx, Operation opt, long x, int paramCnt) {
+        this.idx = idx;
+        this.opt = opt;
+        this.x = x;
+        stackUse += opt.getUseStack(paramCnt);
     }
 
     public Instruction(int idx) {

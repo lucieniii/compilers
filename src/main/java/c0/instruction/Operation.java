@@ -64,4 +64,17 @@ public enum Operation {
     PRINT_S,
     PRINT_LN,
     PANIC;
+
+    public int getUseStack(int n) {
+        return switch (this) {
+            case POP_N, CALL, CALL_NAME -> -n;
+            case STORE_8, STORE_16, STORE_32, STORE_64 -> -2;
+            case POP, FREE, ADD_I, SUB_I, MUL_I, DIV_I, ADD_F, SUB_F, MUL_F, DIV_F, DIV_U, SHL, SHR, AND, OR, XOR,
+                   CMP_I, CMP_U, CMP_F, SHR_L, BR_FALSE, BR_TRUE, PRINT_I, PRINT_C, PRINT_F, PRINT_S -> -1;
+            case NOP, LOAD_8, LOAD_16, LOAD_32, LOAD_64, ALLOC, NEG_I, NEG_F, ITOF, FTOI, SET_LT, SET_GT, BR, NOT,
+                    RET, PRINT_LN, PANIC -> 0;
+            case PUSH, DUP, LOC_A, ARG_A, GLOB_A, SCAN_I, SCAN_C, SCAN_F -> 1;
+            case STACK_ALLOC -> n;
+        };
+    }
 }

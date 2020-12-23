@@ -7,11 +7,15 @@ import main.java.c0.error.*;
 import main.java.c0.instruction.*;
 import main.java.c0.util.Pos;
 
+import java.io.PrintStream;
 import java.util.*;
+
+enum StatementType {
+
+}
 
 public class Analyser {
 
-    //todo: instructions.add(new Instruction(Operation.SUB));
     Tokenizer tokenizer;
     ArrayList<Instruction> instructions;
 
@@ -24,16 +28,32 @@ public class Analyser {
 
     /** 下一个变量的栈偏移 */
     int nextFuncOffset = 0;
-    int nextParamOffset = 1;
+    int nextParamOffset = 0;
     int nextOffset = 0;
     int nextGlobalOffset = 0;
+
+    /** While 层数 **/
+    int whileBlock = 0;
+    Stack<Instruction> bcStack = new Stack<>();
 
     public Analyser(Tokenizer tokenizer) {
         this.tokenizer = tokenizer;
     }
 
-    public void analyse() throws CompileError {
+    public ArrayList<Instruction> analyse(PrintStream output) throws CompileError {
         analyseProgram();
+        ArrayList<Instruction> allInstructions = new ArrayList<>();
+        for (SymbolEntry globalSymbol : globalSymbolStack) {
+            output.println(globalSymbol.ident.toString());
+        }
+        output.println();
+        for (SymbolEntry globalSymbol : globalSymbolStack) {
+            if (globalSymbol.isFunction)
+                for (Instruction i : globalSymbol.instructions)
+                    output.println(i.toString());
+            output.println();
+        }
+        return allInstructions;
     }
 
     /**
@@ -154,8 +174,22 @@ public class Analyser {
         duplicateSymbolCheck(level == 0 ? globalSymbolStack : symbolStack, ident, level);
         int stackOffset = level == 0 ? getNextGlobalVariableOffset() : (isFunctionParam ? getNextParamOffset() : getNextVariableOffset());
         SymbolEntry symbol = new SymbolEntry(ident, type, level, isFunctionParam, isConstant, isInitialized, stackOffset);
-        symbolStack.push(symbol);
+        var __ = level == 0 ? globalSymbolStack.push(symbol) : symbolStack.push(symbol);
         return symbol;
+    }
+
+    /**
+     * 添加一个库函数符号
+     *
+     * @param ident         变量标识符
+     * @param type          变量类型
+     * @throws AnalyzeError 如果重复定义了则抛异常
+     */
+    private SymbolEntry addBaseFunctionSymbol (Token ident, Token type) throws AnalyzeError {
+        duplicateSymbolCheck(globalSymbolStack, ident, 0);
+        SymbolEntry func = new SymbolEntry(ident, type, getNextFuncOffset());
+        globalSymbolStack.push(func);
+        return func;
     }
 
     /**
@@ -212,15 +246,20 @@ public class Analyser {
             switch (ident.getValueString()) {
                 case "putchar", "putint", "putdouble", "putln", "putstr"
                         -> {
-                    addFunctionSymbol(ident, new Token(TokenType.VOID, "void", ident.getStartPos(), ident.getEndPos()));
+                    SymbolEntry fnSymbol = addBaseFunctionSymbol(ident, new Token(TokenType.VOID, "void", ident.getStartPos(), ident.getEndPos()));
+                    switch (ident.getValueString()) {
+                        case "putchar", "putint" -> fnSymbol.paramList.add(TokenType.INT);
+                        case "putdouble" -> fnSymbol.paramList.add(TokenType.DOUBLE);
+                        case "putstr" -> fnSymbol.paramList.add(TokenType.STRING_LITERAL);
+                    }
                     find = getSymbol(ident);
                 }
                 case "getchar", "getint" -> {
-                    addFunctionSymbol(ident, new Token(TokenType.INT, "int", ident.getStartPos(), ident.getEndPos()));
+                    addBaseFunctionSymbol(ident, new Token(TokenType.INT, "int", ident.getStartPos(), ident.getEndPos()));
                     find = getSymbol(ident);
                 }
                 case "getdouble" -> {
-                    addFunctionSymbol(ident, new Token(TokenType.DOUBLE, "double", ident.getStartPos(), ident.getEndPos()));
+                    addBaseFunctionSymbol(ident, new Token(TokenType.DOUBLE, "double", ident.getStartPos(), ident.getEndPos()));
                     find = getSymbol(ident);
                 }
                 default -> throw new AnalyzeError(ErrorCode.NotDeclared, ident.getStartPos());
@@ -256,6 +295,7 @@ public class Analyser {
                 }
                 //<function>
                 case FN_KW -> {
+                    //Instruction.stackUse = 0;
                     analyseFunction();
                 }
                 //ERROR
@@ -295,19 +335,24 @@ public class Analyser {
 
         expect(TokenType.LET_KW);
         Token ident = expect(TokenType.IDENT);
-        //todo: handle symbol
         expect(TokenType.COLON);
         if (!check(TokenType.INT) && !check(TokenType.DOUBLE))
             throw new AnalyzeError(ErrorCode.InvalidVariableType, start);
-        //todo: handle variable type
         Token type = next();
         SymbolEntry s = addVariableSymbol(ident, type, level, false, false, false);
         if (nextIf(TokenType.ASSIGN) != null) {
             start = peek().getStartPos();
-            instructions.add(new Instruction(instructions.size() - 1, Operation.ARG_A, s.stackOffset));
-            if (analyseExpression() != type.getTokenType()) //todo: 参数、返回值未知
+            if (s.level == 0) {
+                instructions.add(new Instruction(instructions.size() - 1, Operation.GLOB_A, s.stackOffset));
+            } else {
+                instructions.add(new Instruction(instructions.size() - 1, Operation.LOC_A, s.stackOffset));
+            }
+            if (analyseExpression() != type.getTokenType())
                 throw new AnalyzeError(ErrorCode.ConflictType, start);
+            instructions.add(new Instruction(instructions.size() - 1, Operation.STORE_64));
+            s.setInitialized(true);
         }
+
         expect(TokenType.SEMICOLON);
     }
 
@@ -322,23 +367,28 @@ public class Analyser {
 
         expect(TokenType.CONST_KW);
         Token ident = expect(TokenType.IDENT);
-        //todo: handle symbol
         expect(TokenType.COLON);
         if (!check(TokenType.INT) && !check(TokenType.DOUBLE))
             throw new AnalyzeError(ErrorCode.InvalidVariableType, start);
         Token type = next();
-        //todo: handle type
         expect(TokenType.ASSIGN);
         start = peek().getStartPos();
-        if (analyseExpression() != type.getTokenType()) //todo: 参数、返回值未知
+        SymbolEntry s = addVariableSymbol(ident, type, level, false, true, true);
+        if (s.level == 0) {
+            instructions.add(new Instruction(instructions.size() - 1, Operation.GLOB_A, s.stackOffset));
+        } else {
+            instructions.add(new Instruction(instructions.size() - 1, Operation.LOC_A, s.stackOffset));
+        }
+        if (analyseExpression() != type.getTokenType())
             throw new AnalyzeError(ErrorCode.ConflictType, start);
-        addVariableSymbol(ident, type, level, false, true, true);
+        instructions.add(new Instruction(instructions.size() - 1, Operation.STORE_64));
         expect(TokenType.SEMICOLON);
     }
 
     private void analyseStatement(SymbolEntry fnSymbol, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
+        boolean ret = false;
         switch (peek().getTokenType()) {
             case LET_KW, CONST_KW -> analyseDeclareStatement(fnSymbol, level);
             case L_BRACE -> analyseBlockStatement(fnSymbol, level + 1);
@@ -359,12 +409,16 @@ public class Analyser {
                 expect(TokenType.RETURN_KW);
                 start = peek().getStartPos();
                 TokenType retType = TokenType.VOID;
+                instructions.add(new Instruction(instructions.size() - 1, Operation.ARG_A, 0));
                 if (!check(TokenType.SEMICOLON)) {
                     retType = analyseExpression();
-                } //todo: handle return value
+                }
                 if (retType != fnSymbol.type.getTokenType())
-                    throw new AnalyzeError(ErrorCode.ConflictType, start);
+                    throw new AnalyzeError(ErrorCode.ConflictFunctionReturnType, start);
+                instructions.add(new Instruction(instructions.size() - 1, Operation.STORE_64));
+                instructions.add(new Instruction(instructions.size() - 1, Operation.RET));
                 expect(TokenType.SEMICOLON);
+                ret = true;
             }
             //analyseEmptyStatement
             case SEMICOLON -> {
@@ -376,6 +430,8 @@ public class Analyser {
                 expect(TokenType.SEMICOLON);
             }
         }
+        if (Instruction.stackUse != 0)
+            instructions.add(new Instruction(instructions.size(), Operation.POP_N, Instruction.stackUse));
     }
 
     private void analyseBlockStatement(SymbolEntry fnSymbol, int level) throws CompileError {
@@ -392,45 +448,157 @@ public class Analyser {
         Pos start = peek().getStartPos();
 
         expect(TokenType.IF_KW);
-        analyseExpression(); //todo: handle boolean
+        analyseExpression();
+        instructions.add(new Instruction(instructions.size() - 1, Operation.BR_TRUE, 1));
+        instructions.add(new Instruction(instructions.size() - 1, Operation.BR, -1));
+        int codeStart = instructions.size();
         analyseBlockStatement(fnSymbol, level + 1);
-        while (check(TokenType.ELSE_KW)) {
+        int codeEnd = instructions.size();
+        instructions.get(codeStart - 1).setX(codeEnd - codeStart + 1);
+
+        instructions.add(new Instruction(instructions.size() - 1, Operation.BR, -1));
+        codeStart = instructions.size();
+        if (check(TokenType.ELSE_KW)) {
             expect(TokenType.ELSE_KW);
-            if (check(TokenType.IF_KW)) {
-                expect(TokenType.IF_KW);
-                analyseExpression(); //todo: handle boolean
+            start = peek().getStartPos();
+            if (check(TokenType.L_BRACE)) {
                 analyseBlockStatement(fnSymbol, level + 1);
-            } else {
-                analyseBlockStatement(fnSymbol, level + 1);
-                return;
-            }
+            } else if (check(TokenType.IF_KW)) {
+                analyseIfStatement(fnSymbol, level);
+            } else throw new AnalyzeError(ErrorCode.MissingBlockOrIfAfterElse, start);
         }
+        codeEnd = instructions.size();
+        instructions.get(codeStart - 1).setX(codeEnd - codeStart);
     }
 
     private void analyseWhileStatement(SymbolEntry fnSymbol, int level) throws CompileError {
         Pos start = peek().getStartPos();
 
         expect(TokenType.WHILE_KW);
-        analyseExpression(); //todo: handle boolean
+        int booleanStart = instructions.size();
+        analyseExpression();
+        instructions.add(new Instruction(instructions.size() - 1, Operation.BR_TRUE, 1));
+        instructions.add(new Instruction(instructions.size() - 1, Operation.BR, -1));
+        int codeStart = instructions.size();
+        whileBlock++;
         analyseBlockStatement(fnSymbol, level + 1);
+        whileBlock--;
+        int codeEnd = instructions.size();
+        instructions.get(codeStart - 1).setX(codeEnd - codeStart + 1);
+        codeEnd = instructions.size();
+        instructions.add(new Instruction(instructions.size() - 1, Operation.BR, booleanStart - codeEnd));
     }
 
+    /**
+     * <expression> ::= <calculate expression> (<compare operator><calculate expression>)
+     * @return
+     * @throws CompileError
+     */
     private TokenType analyseExpression() throws CompileError {
         Pos start = peek().getStartPos();
 
+        TokenType type = analyseCalculateExpression();
+        while (true) {
+            switch (peek().getTokenType()) {
+                case GT, LT, GE, LE, EQ, NEQ -> {
+                    Token op = next();
+                    start = peek().getStartPos();
+                    if (type != analyseCalculateExpression())
+                        throw new AnalyzeError(ErrorCode.ConflictType, start);
+                    switch (type) {
+                        case INT -> instructions.add(new Instruction(instructions.size() - 1, Operation.CMP_I));
+                        case DOUBLE -> instructions.add(new Instruction(instructions.size() - 1, Operation.CMP_F));
+                    }
+                    switch (op.getTokenType()) {
+                        case GT -> instructions.add(new Instruction(instructions.size() - 1, Operation.SET_GT));
+                        case LT -> instructions.add(new Instruction(instructions.size() - 1, Operation.SET_LT));
+                        case EQ -> instructions.add(new Instruction(instructions.size() - 1, Operation.NOT));
+                        case GE -> {
+                            instructions.add(new Instruction(instructions.size() - 1, Operation.SET_LT));
+                            instructions.add(new Instruction(instructions.size() - 1, Operation.NOT));
+                        }
+                        case LE -> {
+                            instructions.add(new Instruction(instructions.size() - 1, Operation.SET_GT));
+                            instructions.add(new Instruction(instructions.size() - 1, Operation.NOT));
+                        }
+                    }
+                }
+                default -> {
+                    return type;
+                }
+            }
+        }
+    }
+
+    /**
+     * <calculate expression> ::= <term> (<add operator><term>)
+     * @return
+     * @throws CompileError
+     */
+    private TokenType analyseCalculateExpression() throws CompileError {
+        Pos start = peek().getStartPos();
+
+        TokenType type = analyseTerm();
+        while (true) {
+            switch (peek().getTokenType()) {
+                case PLUS, MINUS -> {
+                    Token op = next();
+                    start = peek().getStartPos();
+                    if (type != analyseTerm())
+                        throw new AnalyzeError(ErrorCode.ConflictType, start);
+                    switch (op.getTokenType()) {
+                        case PLUS -> instructions.add(new Instruction(instructions.size() - 1, type == TokenType.INT ? Operation.ADD_I : Operation.ADD_F));
+                        case MINUS -> instructions.add(new Instruction(instructions.size() - 1, type == TokenType.INT ? Operation.SUB_I : Operation.SUB_F));
+                    }
+                }
+                default -> {
+                    return type;
+                }
+            }
+        }
+    }
+
+    /**
+     * <term> ::= <factor> (<multiply operator><factor>)
+     * @return
+     * @throws CompileError
+     */
+    private TokenType analyseTerm() throws CompileError {
+        Pos start = peek().getStartPos();
+
+        TokenType type = analyseFactor();
+        while (true) {
+            switch (peek().getTokenType()) {
+                case MUL, DIV -> {
+                    Token op = next();
+                    start = peek().getStartPos();
+                    if (type != analyseFactor())
+                        throw new AnalyzeError(ErrorCode.ConflictType, start);
+                    switch (op.getTokenType()) {
+                        case MUL -> instructions.add(new Instruction(instructions.size() - 1, type == TokenType.INT ? Operation.MUL_I : Operation.MUL_F));
+                        case DIV -> instructions.add(new Instruction(instructions.size() - 1, type == TokenType.INT ? Operation.DIV_I : Operation.DIV_F));
+                    }
+                }
+                default -> {
+                    return type;
+                }
+            }
+        }
+    }
+
+    /**
+     * <factor> ::= <MINUS>? (<group expression>|<call expression>|<IDENT>|<literal expression>|<assign expression>) (<AS> <TYPE>)?
+     * @return
+     * @throws CompileError
+     */
+    private TokenType analyseFactor() throws CompileError {
+        Pos start = peek().getStartPos();
+
+        boolean opposite = false;
+        while (nextIf(TokenType.MINUS) != null)
+            opposite = !opposite;
         TokenType type;
         switch (peek().getTokenType()) {
-            //analyseNegateExpression
-            case MINUS -> {
-                expect(TokenType.MINUS);
-                start = peek().getStartPos();
-                type = analyseExpression();
-                if (type == TokenType.DOUBLE)
-                    instructions.add(new Instruction(instructions.size() - 1, Operation.NEG_F));
-                else if (type == TokenType.INT)
-                    instructions.add(new Instruction(instructions.size() - 1, Operation.NEG_I));
-                else throw new AnalyzeError(ErrorCode.InvalidNegative, start);
-            }
             case IDENT -> {
                 Token ident = expect(TokenType.IDENT);
                 SymbolEntry symbol = getSymbol(ident);
@@ -455,17 +623,31 @@ public class Analyser {
                     }
                     //analyseCallExpression
                     case L_PAREN -> {
+                        if (!symbol.isFunction)
+                            throw new AnalyzeError(ErrorCode.NotAFunction, start);
+                        if (symbol.type.getTokenType() != TokenType.VOID)
+                            instructions.add(new Instruction(instructions.size() - 1, Operation.STACK_ALLOC, 1));
                         expect(TokenType.L_PAREN);
-                        //todo: handle call
                         analyseCallParamList(symbol);
                         expect(TokenType.R_PAREN);
-                        instructions.add(new Instruction(instructions.size() - 1, Operation.CALL, symbol.stackOffset));
+                        switch (symbol.ident.getValueString()) {
+                            case "putchar", "putint", "putdouble", "putln", "putstr" ,"getchar", "getint", "getdouble"
+                                    -> instructions.add(new Instruction(instructions.size() - 1, Operation.CALL_NAME, symbol.stackOffset, symbol.paramList.size()));
+                            default -> instructions.add(new Instruction(instructions.size() - 1, Operation.CALL, symbol.stackOffset, symbol.paramList.size()));
+                        }
                         type = symbol.type.getTokenType();
                     }
                     //analyseIdentExpression
                     default -> {
-                        //todo: handle symbol?
                         type = symbol.type.getTokenType();
+                        if (symbol.isFunctionParam)
+                            instructions.add(new Instruction(instructions.size() - 1, Operation.ARG_A, symbol.stackOffset));
+                        else if (symbol.level == 0) {
+                            instructions.add(new Instruction(instructions.size() - 1, Operation.GLOB_A, symbol.stackOffset));
+                        } else {
+                            instructions.add(new Instruction(instructions.size() - 1, Operation.LOC_A, symbol.stackOffset));
+                        }
+                        instructions.add(new Instruction(instructions.size() - 1, Operation.LOAD_64));
                     }
                 }
             }
@@ -476,14 +658,13 @@ public class Analyser {
                     default -> type = TokenType.DOUBLE;
                 }
                 long value = next().getValueLong();
-                //todo: handle value
+                instructions.add(new Instruction(instructions.size() - 1, Operation.PUSH, value));
             }
             //analyseLiteralExpression
             case STRING_LITERAL -> {
                 Token strIdent = next();
-                //todo: handle string value
-                addStringSymbol(strIdent, strIdent.getValueString());
-                type = TokenType.STRING_LITERAL;
+                instructions.add(new Instruction(instructions.size() - 1, Operation.PUSH, addStringSymbol(strIdent, strIdent.getValueString())));
+                type = TokenType.STRING_LITERAL;//todo: 究竟是什么类型？
             }
             //analyseGroupExpression
             case L_PAREN -> {
@@ -493,45 +674,30 @@ public class Analyser {
             }
             default -> throw new AnalyzeError(ErrorCode.InvalidExpression, start);
         }
-        TokenType advType = analyseAdvanceExpression(type);
-        if (advType == TokenType.EOE)
-            return type;
-        else
-            return advType;
-    }
+        if (opposite) {
+            start = peek().getStartPos();
+            if (type == TokenType.DOUBLE)
+                instructions.add(new Instruction(instructions.size() - 1, Operation.NEG_F));
+            else if (type == TokenType.INT)
+                instructions.add(new Instruction(instructions.size() - 1, Operation.NEG_I));
+            else throw new AnalyzeError(ErrorCode.InvalidNegative, start);
+        }
 
-    private TokenType analyseAdvanceExpression(TokenType type) throws CompileError {
-        Pos start = peek().getStartPos();
-
-        switch (peek().getTokenType()) {
-            //analyseOperatorExpression
-            case PLUS, MINUS, MUL, DIV, EQ, NEQ, LT, GT, LE, GE -> {
-                Token op = next(); //todo: do calc
-                start = peek().getStartPos();
-                if (type != analyseExpression())
-                    throw new AnalyzeError(ErrorCode.ConflictType, start);
-                TokenType advType = analyseAdvanceExpression(type);
-                if (advType == TokenType.EOE)
-                    return type;
-                if (type != analyseAdvanceExpression(type))
-                    throw new AnalyzeError(ErrorCode.ConflictType, start);
-                return type;
-            }
-            //analyseAsExpression
-            case AS_KW -> {
-                expect(TokenType.AS_KW);
-                if (!check(TokenType.INT) && !check(TokenType.DOUBLE))
-                    throw new AnalyzeError(ErrorCode.InvalidType, start);
-                Token asType = next(); //todo: handle type
-                boolean isNextAs = peek().getTokenType() == TokenType.AS_KW;
-                TokenType advType = analyseAdvanceExpression(asType.getTokenType());
-                if (isNextAs)
-                    return advType;
-                else
-                    return asType.getTokenType();
+        TokenType asType;
+        while (nextIf(TokenType.AS_KW) != null) {
+            start = peek().getStartPos();
+            if (type != TokenType.INT && type != TokenType.DOUBLE)
+                throw new AnalyzeError(ErrorCode.ConflictType, start);
+            if (!check(TokenType.INT) && !check(TokenType.DOUBLE))
+                throw new AnalyzeError(ErrorCode.ConflictType, start);
+            asType = next().getTokenType();
+            if (asType != type) {
+                instructions.add(new Instruction(instructions.size() - 1, asType == TokenType.INT ? Operation.FTOI : Operation.ITOF));
+                type = asType;
             }
         }
-        return TokenType.EOE;
+
+        return type;
     }
 
     /**
@@ -544,11 +710,21 @@ public class Analyser {
 
         if (check(TokenType.R_PAREN))
             return;
-        TokenType paramType = analyseExpression();
         int curParam = 0;
+        if (analyseExpression() == fnSymbol.paramList.get(curParam))
+            curParam++;
+        else
+            throw new AnalyzeError(ErrorCode.InvalidFunctionParam, start);
         while (nextIf(TokenType.COMMA) != null) {
-            analyseExpression(); //todo: now here
+            start = peek().getStartPos();
+            if (analyseExpression() == fnSymbol.paramList.get(curParam))
+                curParam++;
+            else
+                throw new AnalyzeError(ErrorCode.InvalidFunctionParam, start);
         }
+        start = peek().getStartPos();
+        if (curParam != fnSymbol.paramList.size())
+            throw new AnalyzeError(ErrorCode.InvalidFunctionParam, start);
     }
 
     /**
@@ -561,16 +737,20 @@ public class Analyser {
         expect(TokenType.FN_KW);
         Token ident = expect(TokenType.IDENT);
         SymbolEntry fnSymbol = addFunctionSymbol(ident, null);
-        //todo: handle symbol
         expect(TokenType.L_PAREN);
         analyseParamList(fnSymbol, 1);
         expect(TokenType.R_PAREN);
         expect(TokenType.ARROW);
         if (!check(TokenType.INT) && !check(TokenType.DOUBLE) && !check(TokenType.VOID))
             throw new AnalyzeError(ErrorCode.InvalidFunctionReturnType, start);
-        fnSymbol.setType(next());
-        //todo: handle function type
+        Token retType = next();
+        fnSymbol.setType(retType);
+        if (retType.getTokenType() != TokenType.VOID)
+            for (SymbolEntry param : symbolStack)
+                param.stackOffset++;
         analyseBlockStatement(fnSymbol, 1);
+        if (instructions.get(instructions.size() - 1).getOpt() != Operation.RET)
+            instructions.add(new Instruction(instructions.size() - 1, Operation.RET));
     }
 
     /**

@@ -7,5 +7,6 @@ public enum ErrorCode {
     NotDeclared, AssignToConstant, DuplicateDeclaration, NotInitialized, InvalidAssignment, InvalidPrint, ExpectedToken,
     InvalidEscapeSeq, EmptyChar, UnknownToken, IncompleteStringOrChar, InvalidChar, DoubleInvalidOrOverflow,
     InvalidGlobalDeclaration, InvalidFunctionReturnType, InvalidDeclaration, InvalidParamType, InvalidVariableType,
-    InvalidExpression, InvalidType, ConflictType, InvalidNegative,
+    InvalidExpression, InvalidType, ConflictType, ConflictFunctionReturnType, InvalidNegative, InvalidFunctionParam,
+    NotAFunction, MissingBlockOrIfAfterElse,
 }

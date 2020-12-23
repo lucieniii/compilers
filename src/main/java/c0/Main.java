@@ -83,15 +83,15 @@ public class Main {
         var analyzer = new Analyser(tokenizer);
         List<Instruction> instructions;
         try {
-            analyzer.analyse();
+            instructions = analyzer.analyse(output);
         } catch (Exception e) {
             // 遇到错误不输出，直接退出
             output.println(e);
             // System.exit(0);
             return;
         }
-        output.println("Analysis accomplished!");
-        /*for (Instruction instruction : instructions) {
+        /*output.println("Analysis accomplished!");
+        for (Instruction instruction : instructions) {
             output.println(instruction.toString());
         }*/
     }
