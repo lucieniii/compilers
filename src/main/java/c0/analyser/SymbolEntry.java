@@ -19,6 +19,7 @@ public class SymbolEntry {
     boolean isFunction;
     ArrayList<TokenType> paramList;
     ArrayList<Instruction> instructions;
+    int stackSize;
 
     boolean isFunctionParam;
     boolean isConstant;
@@ -46,6 +47,7 @@ public class SymbolEntry {
         this.stackOffset = stackOffset;
 
         this.isFunction = false;
+        this.stackSize = 0;
         this.paramList = null;
         this.instructions = null;
         this.isString = false;
@@ -73,6 +75,7 @@ public class SymbolEntry {
 
         this.instructions = new ArrayList<>();
         this.paramList = new ArrayList<>();
+        this.stackSize = 0;
     }
 
     /**
@@ -92,6 +95,7 @@ public class SymbolEntry {
         this.isFunction = false;
         this.paramList = null;
         this.instructions = null;
+        this.stackSize = 0;
         this.isString = true;
         this.strValue = strValue;
     }

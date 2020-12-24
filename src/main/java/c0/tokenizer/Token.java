@@ -99,12 +99,36 @@ public class Token {
     @Override
     public String toString() {
         var sb = new StringBuilder();
-        sb.append("Line: ").append(this.startPos.row).append(' ');
-        sb.append("Column: ").append(this.startPos.col).append(' ');
-        sb.append("Type: ").append(this.tokenType).append(' ');
+        //sb.append("Line: ").append(this.startPos.row).append(' ');
+        //sb.append("Column: ").append(this.startPos.col).append(' ');
+        //sb.append("Type: ").append(this.tokenType).append(' ');
         //sb.append("Value: ").append(this.value);
         sb.append("Value: ").append(getValueString());
         return sb.toString();
+    }
+
+    public String toHexString(boolean isFunction) {
+        StringBuilder hex = new StringBuilder();
+        switch (this.getValueString()) {
+            case "putchar", "putint", "putdouble", "putln", "putstr" ,"getchar", "getint", "getdouble"
+                    -> {
+                for (char c : this.getValueString().toCharArray()) {
+                    hex.append(Integer.toHexString(c));
+                    hex.append(" ");
+                }
+            }
+            default -> {
+                if (tokenType == TokenType.STRING_LITERAL || isFunction) {
+                    for (char c : this.getValueString().toCharArray()) {
+                        hex.append(Integer.toHexString(c));
+                        hex.append(" ");
+                    }
+                } else {
+                    hex.append("00 00 00 00 00 00 00 00");
+                }
+            }
+        }
+        return hex.toString();
     }
 
     public String toStringAlt() {

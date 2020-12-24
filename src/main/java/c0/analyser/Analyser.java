@@ -28,6 +28,8 @@ public class Analyser {
     int nextOffset = 0;
     int nextGlobalOffset = 0;
 
+    int maxStackSize = 0;
+
     /** While 层数 **/
     int whileBlock = 0;
     Stack<Instruction> bcStack = new Stack<>();
@@ -45,10 +47,10 @@ public class Analyser {
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             switch (globalSymbol.ident.getValueString()) {
                 case "putchar", "putint", "putdouble", "putln", "putstr" ,"getchar", "getint", "getdouble"
-                        -> output.println(globalSymbol.ident.toString());
+                        -> output.println(globalSymbol.ident.toHexString(false) + " " + globalSymbol.ident.toString());
                 default -> {
                     if (!globalSymbol.isFunction)
-                        output.println(globalSymbol.ident.toString());
+                        output.println(globalSymbol.ident.toHexString(false) + " " + globalSymbol.ident.toString());
                 }
             }
         }
@@ -58,15 +60,19 @@ public class Analyser {
                     break;
                 default:
                     if (globalSymbol.isFunction)
-                        output.println(globalSymbol.ident.toString());
+                        output.println(globalSymbol.ident.toHexString(true) + " " + globalSymbol.ident.toString());
 
             }
         }
         output.println();
         for (SymbolEntry globalSymbol : globalSymbolStack) {
-            if (globalSymbol.isFunction)
+            if (globalSymbol.isFunction && globalSymbol.instructions.size() != 0) {
+                output.print(globalSymbol.stackSize + " ");
+                output.print(globalSymbol.paramList.size() + " ");
+                output.println(globalSymbol.type.getTokenType() == TokenType.VOID ? 0 : 1 + " ");
                 for (Instruction i : globalSymbol.instructions)
                     output.println(i.toString());
+            }
             output.println();
         }
         return allInstructions;
@@ -151,6 +157,7 @@ public class Analyser {
      * @return
      */
     private int getNextVariableOffset() {
+        maxStackSize = Math.max(this.nextOffset + 1, maxStackSize);
         return this.nextOffset++;
     }
 
@@ -305,7 +312,7 @@ public class Analyser {
      */
     private void analyseProgram() throws CompileError {
         Pos start = peek().getStartPos();
-        SymbolEntry _start = addFunctionSymbol(new Token(TokenType.IDENT, "_GLOBAL", start, start), new Token(TokenType.VOID, "_GLOBAL", start, start));
+        SymbolEntry _start = addFunctionSymbol(new Token(TokenType.IDENT, "_start", start, start), new Token(TokenType.VOID, "_start", start, start));
 
         while (!check(TokenType.EOF)) {
             //<declare statement>|<function>
@@ -819,6 +826,8 @@ public class Analyser {
                 addInstruction(new Instruction(instructions.size() - 1, Operation.RET));
             else throw new AnalyzeError(ErrorCode.NoReturn, start);
         }
+        fnSymbol.stackSize = this.maxStackSize;
+        this.maxStackSize = 0;
     }
 
     /**
