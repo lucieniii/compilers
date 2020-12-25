@@ -8,6 +8,7 @@ public class Instruction {
     private Operation opt;
     private long x;
     public static int stackUse = 0;
+    public static int maxStackUse = 0;
 
     public Instruction(int idx, Operation opt) {
         this.idx = idx;
@@ -21,6 +22,7 @@ public class Instruction {
         this.opt = opt;
         this.x = x;
         stackUse += opt.getUseStack((int) x);
+        maxStackUse = Math.max(maxStackUse, stackUse);
     }
 
     public Instruction(int idx, Operation opt, long x, int paramCnt) {
