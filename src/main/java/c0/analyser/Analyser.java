@@ -29,7 +29,8 @@ public class Analyser {
     int nextOffset = 0;
     int nextGlobalOffset = 0;
 
-    int maxStackSize = 0;
+    int localVarCnt = 0;
+    int allMaxStack = 0;
 
     /** While 层数 **/
     int whileBlock = 0;
@@ -90,7 +91,7 @@ public class Analyser {
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             if (globalSymbol.isFunction && globalSymbol.instructions.size() != 0) {
                 output.println("Name location: " + Encoder.EncodeToString(globalSymbol.stackOffset) + " ");
-                output.println("Stack size: " + Encoder.EncodeToString(globalSymbol.stackSize) + " ");
+                output.println("loc var count: " + Encoder.EncodeToString(globalSymbol.localVarCnt) + " ");
                 output.println("Params: " + Encoder.EncodeToString(globalSymbol.paramList.size()) + " ");
                 output.println("Return count: " + Encoder.EncodeToString(globalSymbol.type.getTokenType() == TokenType.VOID ? 0 : 1) + " ");
                 output.println("Instruction counting: " + Encoder.EncodeToString(globalSymbol.instructions.size()) + " ");
@@ -144,12 +145,13 @@ public class Analyser {
             }
         }
         output.write(Encoder.toBytes(funcCnt));
+
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             if (globalSymbol.isFunction && globalSymbol.instructions.size() != 0) {
                 output.write(Encoder.toBytes(globalSymbol.stackOffset));
                 output.write(Encoder.toBytes(globalSymbol.type.getTokenType() == TokenType.VOID ? 0 : 1));
                 output.write(Encoder.toBytes(globalSymbol.paramList.size()));
-                output.write(Encoder.toBytes(globalSymbol.stackSize));
+                output.write(Encoder.toBytes(globalSymbol.localVarCnt));
                 output.write(Encoder.toBytes(globalSymbol.instructions.size()));
                 for (Instruction i : globalSymbol.instructions) {
                     output.write(i.toBytes());
@@ -160,8 +162,8 @@ public class Analyser {
 
     public void analyse(PrintStream output) throws CompileError, IOException {
         analyseProgram();
-        //middleCodeGen(output);
-        binaryCodeGen(output);
+        middleCodeGen(output);
+        //binaryCodeGen(output);
     }
 
     /**
@@ -243,7 +245,7 @@ public class Analyser {
      * @return
      */
     private int getNextVariableOffset() {
-        maxStackSize = Math.max(this.nextOffset + 1, maxStackSize);
+        localVarCnt = Math.max(localVarCnt, this.nextOffset + 1);
         return this.nextOffset++;
     }
 
@@ -423,6 +425,8 @@ public class Analyser {
         if (mainId == -1)
             throw new AnalyzeError(ErrorCode.NoMainFunction, start);
         _start.instructions.add(new Instruction(_start.instructions.size() - 1, Operation.CALL, mainId, 0));
+        _start.stackSize = allMaxStack + 1;
+        allMaxStack = 0;
     }
 
     /**
@@ -912,8 +916,11 @@ public class Analyser {
                 addInstruction(new Instruction(instructions.size() - 1, Operation.RET));
             else throw new AnalyzeError(ErrorCode.NoReturn, start);
         }
-        fnSymbol.stackSize = this.maxStackSize;
-        this.maxStackSize = 0;
+        fnSymbol.stackSize = Instruction.maxStackUse;
+        allMaxStack = Math.max(Instruction.maxStackUse, allMaxStack);
+        fnSymbol.localVarCnt = this.localVarCnt;
+        this.localVarCnt = 0;
+        Instruction.maxStackUse = 0;
     }
 
     /**
