@@ -162,8 +162,8 @@ public class Analyser {
 
     public void analyse(PrintStream output) throws CompileError, IOException {
         analyseProgram();
-        middleCodeGen(output);
-        //binaryCodeGen(output);
+        //middleCodeGen(output);
+        binaryCodeGen(output);
     }
 
     /**
