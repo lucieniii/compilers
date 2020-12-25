@@ -104,7 +104,7 @@ public class Instruction {
                 System.arraycopy(x, 0, ins, opt.length, x.length);
             }
             default -> {
-                ins = Encoder.toBytes(this.opt.getValue());
+                ins = Encoder.toBytes((byte)this.opt.getValue());
             }
         }
         return ins;
