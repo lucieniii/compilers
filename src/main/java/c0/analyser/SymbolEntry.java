@@ -1,8 +1,8 @@
-package main.java.c0.analyser;
+package src.main.java.c0.analyser;
 
-import main.java.c0.instruction.Instruction;
-import main.java.c0.tokenizer.Token;
-import main.java.c0.tokenizer.TokenType;
+import src.main.java.c0.instruction.Instruction;
+import src.main.java.c0.tokenizer.Token;
+import src.main.java.c0.tokenizer.TokenType;
 
 import java.util.ArrayList;
 

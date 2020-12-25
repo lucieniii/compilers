@@ -1,11 +1,11 @@
-package main.java.c0.error;
+package src.main.java.c0.error;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import main.java.c0.tokenizer.Token;
-import main.java.c0.tokenizer.TokenType;
-import main.java.c0.util.Pos;
+import src.main.java.c0.tokenizer.Token;
+import src.main.java.c0.tokenizer.TokenType;
+import src.main.java.c0.util.Pos;
 
 public class ExpectedTokenError extends CompileError {
     private static final long serialVersionUID = 1L;

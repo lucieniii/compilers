@@ -1,7 +1,7 @@
-package main.java.c0.tokenizer;
+package src.main.java.c0.tokenizer;
 
-import main.java.c0.error.TokenizeError;
-import main.java.c0.util.Pos;
+import src.main.java.c0.error.TokenizeError;
+import src.main.java.c0.util.Pos;
 
 import java.util.Objects;
 

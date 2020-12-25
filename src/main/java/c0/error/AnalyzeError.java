@@ -1,6 +1,6 @@
-package main.java.c0.error;
+package src.main.java.c0.error;
 
-import main.java.c0.util.Pos;
+import src.main.java.c0.util.Pos;
 
 public class AnalyzeError extends CompileError {
     private static final long serialVersionUID = 1L;

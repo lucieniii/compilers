@@ -4,5 +4,5 @@ image = { source = "dockerfile", path = ".", tag = "c0" }
 
 run = [
   "cd production/compilers",
-  "java main.java.c0.Main $input $asm",
+  "java src.main.java.c0.Main $input $asm",
 ]

@@ -1,11 +1,11 @@
-package main.java.c0.analyser;
+package src.main.java.c0.analyser;
 
-import main.java.c0.tokenizer.Token;
-import main.java.c0.tokenizer.Tokenizer;
-import main.java.c0.tokenizer.TokenType;
-import main.java.c0.error.*;
-import main.java.c0.instruction.*;
-import main.java.c0.util.*;
+import src.main.java.c0.tokenizer.Token;
+import src.main.java.c0.tokenizer.Tokenizer;
+import src.main.java.c0.tokenizer.TokenType;
+import src.main.java.c0.error.*;
+import src.main.java.c0.instruction.*;
+import src.main.java.c0.util.*;
 
 import java.io.IOException;
 import java.io.PrintStream;
