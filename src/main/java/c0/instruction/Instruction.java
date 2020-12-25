@@ -1,6 +1,7 @@
 package main.java.c0.instruction;
 
 import java.util.Objects;
+import main.java.c0.util.Encoder;
 
 public class Instruction {
     private int idx;
@@ -81,5 +82,29 @@ public class Instruction {
                     -> String.format("%s %s", this.opt, this.x);
             default -> String.format("%s", this.opt);
         };
+    }
+
+    public byte[] toBytes() {
+        byte[] ins;
+        switch (this.opt) {
+            case PUSH -> {
+                byte[] opt = Encoder.toBytes((byte) this.opt.getValue());
+                byte[] x = Encoder.toBytes(this.x);
+                ins = new byte[opt.length + x.length];
+                System.arraycopy(opt, 0, ins, 0, opt.length);
+                System.arraycopy(x, 0, ins, opt.length, x.length);
+            }
+            case POP_N, LOC_A, ARG_A, GLOB_A, STACK_ALLOC, BR, BR_FALSE, BR_TRUE, CALL, CALL_NAME -> {
+                byte[] opt = Encoder.toBytes((byte) this.opt.getValue());
+                byte[] x = Encoder.toBytes((int)this.x);
+                ins = new byte[opt.length + x.length];
+                System.arraycopy(opt, 0, ins, 0, opt.length);
+                System.arraycopy(x, 0, ins, opt.length, x.length);
+            }
+            default -> {
+                ins = Encoder.toBytes(this.opt.getValue());
+            }
+        }
+        return ins;
     }
 }

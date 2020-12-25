@@ -42,7 +42,7 @@ public class Main {
         }
 
         PrintStream output;
-        String outputFileName = inputFileName.split("\\.")[0] + ".c0Ana";
+        String outputFileName = inputFileName.split("\\.")[0] + ".o0";
         try {
             output = new PrintStream(new FileOutputStream(outputFileName));
         } catch (FileNotFoundException e) {
@@ -83,7 +83,7 @@ public class Main {
         var analyzer = new Analyser(tokenizer);
         List<Instruction> instructions;
         try {
-            instructions = analyzer.analyse(output);
+            analyzer.analyse(output);
         } catch (Exception e) {
             // 遇到错误不输出，直接退出
             output.println(e);

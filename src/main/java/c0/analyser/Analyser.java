@@ -5,8 +5,9 @@ import main.java.c0.tokenizer.Tokenizer;
 import main.java.c0.tokenizer.TokenType;
 import main.java.c0.error.*;
 import main.java.c0.instruction.*;
-import main.java.c0.util.Pos;
+import main.java.c0.util.*;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
 
@@ -41,21 +42,29 @@ public class Analyser {
         this.tokenizer = tokenizer;
     }
 
-    public ArrayList<Instruction> analyse(PrintStream output) throws CompileError {
-        analyseProgram();
-        output.println("72 30 3b 3e");
-        output.println("00 00 00 01");
+    public void middleCodeGen(PrintStream output) {
+        output.println(Encoder.EncodeToString(1915763518));
+        output.println(Encoder.EncodeToString(1));
+
         output.println(globalSymbolStack.size());
-        ArrayList<Instruction> allInstructions = new ArrayList<>();
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             switch (globalSymbol.ident.getValueString()) {
                 case "putchar", "putint", "putdouble", "putln", "putstr" ,"getchar", "getint", "getdouble"
-                        -> output.println(globalSymbol.isConstant + String.format(" %08X ", globalSymbol.ident.getValueString().length()) + globalSymbol.ident.toHexString(false) + " " + globalSymbol.ident.toString());
+                        -> output.println(
+                        Encoder.EncodeToString(globalSymbol.isConstant) + " " +
+                                Encoder.EncodeToString(globalSymbol.ident.getValueString().length()) + " " +
+                                Encoder.EncodeToString(globalSymbol.ident.getValueString()) + " " + globalSymbol.ident.toString());
                 default -> {
                     if (!globalSymbol.isFunction) {
                         if (globalSymbol.isString)
-                            output.println(globalSymbol.isConstant + String.format(" %08X ", globalSymbol.strValue.length()) + globalSymbol.ident.toHexString(false) + " " + globalSymbol.ident.toString());
-                        else output.println(globalSymbol.isConstant + String.format(" %08X ", 8) + globalSymbol.ident.toHexString(false) + " " + globalSymbol.ident.toString());
+                            output.println(
+                                    Encoder.EncodeToString(globalSymbol.isConstant) + " " +
+                                            Encoder.EncodeToString(globalSymbol.strValue.length()) + " " +
+                                            Encoder.EncodeToString(globalSymbol.strValue) + " " + globalSymbol.ident.toString());
+                        else output.println(
+                                Encoder.EncodeToString(globalSymbol.isConstant) + " " +
+                                        Encoder.EncodeToString(8) + " " +
+                                        Encoder.EncodeToString(0L) + " " + globalSymbol.ident.toString());
                     }
                 }
             }
@@ -66,22 +75,85 @@ public class Analyser {
                     break;
                 default:
                     if (globalSymbol.isFunction)
-                        output.println(globalSymbol.isConstant + String.format(" %08X ", globalSymbol.ident.getValueString().length()) + globalSymbol.ident.toHexString(true) + " " + globalSymbol.ident.toString());
+                        output.println(
+                                Encoder.EncodeToString(globalSymbol.isConstant) + " " +
+                                        Encoder.EncodeToString(globalSymbol.ident.getValueString().length()) + " " +
+                                        Encoder.EncodeToString(globalSymbol.ident.getValueString()) + " " + globalSymbol.ident.toString());
 
             }
         }
         output.println();
+
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             if (globalSymbol.isFunction && globalSymbol.instructions.size() != 0) {
-                output.print(globalSymbol.stackSize + " ");
-                output.print(globalSymbol.paramList.size() + " ");
-                output.println(globalSymbol.type.getTokenType() == TokenType.VOID ? 0 : 1 + " ");
+                output.println("Stack size: " + Encoder.EncodeToString(globalSymbol.stackSize) + " ");
+                output.println("Params: " + Encoder.EncodeToString(globalSymbol.paramList.size()) + " ");
+                output.println("Return count: " + Encoder.EncodeToString(globalSymbol.type.getTokenType() == TokenType.VOID ? 0 : 1) + " ");
                 for (Instruction i : globalSymbol.instructions)
                     output.println(i.toString());
+                output.println();
             }
-            output.println();
         }
-        return allInstructions;
+    }
+
+    public void binaryCodeGen(PrintStream output) throws IOException {
+        output.write(Encoder.toBytes(1915763518));
+        output.write(Encoder.toBytes(1));
+
+        output.write(Encoder.toBytes(globalSymbolStack.size()));
+        for (SymbolEntry globalSymbol : globalSymbolStack) {
+            switch (globalSymbol.ident.getValueString()) {
+                case "putchar", "putint", "putdouble", "putln", "putstr" ,"getchar", "getint", "getdouble"
+                        -> {
+                        output.write(Encoder.toBytes(globalSymbol.isConstant));
+                        output.write(Encoder.toBytes(globalSymbol.ident.getValueString().length()));
+                        output.write(Encoder.toBytes(globalSymbol.ident.getValueString()));
+                }
+                default -> {
+                    if (!globalSymbol.isFunction) {
+                        if (globalSymbol.isString) {
+                            output.write(Encoder.toBytes(globalSymbol.isConstant));
+                            output.write(Encoder.toBytes(globalSymbol.strValue.length()));
+                            output.write(Encoder.toBytes(globalSymbol.strValue));
+                        } else {
+                            output.write(Encoder.toBytes(globalSymbol.isConstant));
+                            output.write(Encoder.toBytes(8));
+                            output.write(Encoder.toBytes(0L));
+                        }
+                    }
+                }
+            }
+        }
+        for (SymbolEntry globalSymbol : globalSymbolStack) {
+            switch (globalSymbol.ident.getValueString()) {
+                case "putchar", "putint", "putdouble", "putln", "putstr" ,"getchar", "getint", "getdouble":
+                    break;
+                default:
+                    if (globalSymbol.isFunction) {
+                        output.write(Encoder.toBytes(globalSymbol.isConstant));
+                        output.write(Encoder.toBytes(globalSymbol.ident.getValueString().length()));
+                        output.write(Encoder.toBytes(globalSymbol.ident.getValueString()));
+                    }
+            }
+        }
+
+        for (SymbolEntry globalSymbol : globalSymbolStack) {
+            if (globalSymbol.isFunction && globalSymbol.instructions.size() != 0) {
+                output.write(Encoder.toBytes(globalSymbol.instructions.size()));
+                output.write(Encoder.toBytes(globalSymbol.type.getTokenType() == TokenType.VOID ? 0 : 1));
+                output.write(Encoder.toBytes(globalSymbol.paramList.size()));
+                output.write(Encoder.toBytes(globalSymbol.stackSize));
+                for (Instruction i : globalSymbol.instructions) {
+                    output.write(i.toBytes());
+                }
+            }
+        }
+    }
+
+    public void analyse(PrintStream output) throws CompileError, IOException {
+        analyseProgram();
+        //middleCodeGen(output);
+        binaryCodeGen(output);
     }
 
     /**
