@@ -7,3 +7,4 @@ data
 *.iml
 *.c0
 *.o0
+out
