@@ -544,13 +544,15 @@ public class Analyser {
                 expect(TokenType.RETURN_KW);
                 start = peek().getStartPos();
                 TokenType retType = TokenType.VOID;
-                addInstruction(new Instruction(instructions.size() - 1, Operation.ARG_A, 0));
+                if (fnSymbol.type.getTokenType() != TokenType.VOID)
+                    addInstruction(new Instruction(instructions.size() - 1, Operation.ARG_A, 0));
                 if (!check(TokenType.SEMICOLON)) {
                     retType = analyseExpression();
                 }
                 if (retType != fnSymbol.type.getTokenType())
                     throw new AnalyzeError(ErrorCode.ConflictFunctionReturnType, start);
-                addInstruction(new Instruction(instructions.size() - 1, Operation.STORE_64));
+                if (fnSymbol.type.getTokenType() != TokenType.VOID)
+                    addInstruction(new Instruction(instructions.size() - 1, Operation.STORE_64));
                 addInstruction(new Instruction(instructions.size() - 1, Operation.RET));
                 expect(TokenType.SEMICOLON);
                 ret = true;
@@ -610,7 +612,7 @@ public class Analyser {
             } else throw new AnalyzeError(ErrorCode.MissingBlockOrIfAfterElse, start);
         }
         codeEnd = instructions.size();
-        instructions.get(codeStart - 1).setX(codeEnd - codeStart + 1);
+        instructions.get(codeStart - 1).setX(codeEnd - codeStart);
 
         return ret && ret2;
     }

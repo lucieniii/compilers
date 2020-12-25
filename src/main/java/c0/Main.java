@@ -41,7 +41,7 @@ public class Main {
             return;
         }
         if (outputFileName == null)
-            outputFileName = inputFileName.split("\\.")[0] + ".o0";
+            outputFileName = inputFileName.split("\\.")[0] + ".c0Ana";
         PrintStream output;
         try {
             output = new PrintStream(new FileOutputStream(outputFileName));
