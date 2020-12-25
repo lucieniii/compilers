@@ -69,21 +69,24 @@ public class Analyser {
                 }
             }
         }
+        int funcCnt = 0;
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             switch (globalSymbol.ident.getValueString()) {
                 case "putchar", "putint", "putdouble", "putln", "putstr" ,"getchar", "getint", "getdouble":
                     break;
                 default:
-                    if (globalSymbol.isFunction)
+                    if (globalSymbol.isFunction) {
                         output.println(
                                 Encoder.EncodeToString(globalSymbol.isConstant) + " " +
                                         Encoder.EncodeToString(globalSymbol.ident.getValueString().length()) + " " +
                                         Encoder.EncodeToString(globalSymbol.ident.getValueString()) + " " + globalSymbol.ident.toString());
+                        funcCnt++;
+                    }
 
             }
         }
         output.println();
-
+        output.println("Function count: " + Encoder.EncodeToString(funcCnt));
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             if (globalSymbol.isFunction && globalSymbol.instructions.size() != 0) {
                 output.println("Name location: " + Encoder.EncodeToString(globalSymbol.stackOffset) + " ");
@@ -126,6 +129,7 @@ public class Analyser {
                 }
             }
         }
+        int funcCnt = 0;
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             switch (globalSymbol.ident.getValueString()) {
                 case "putchar", "putint", "putdouble", "putln", "putstr" ,"getchar", "getint", "getdouble":
@@ -135,10 +139,11 @@ public class Analyser {
                         output.write(Encoder.toBytes(globalSymbol.isConstant));
                         output.write(Encoder.toBytes(globalSymbol.ident.getValueString().length()));
                         output.write(Encoder.toBytes(globalSymbol.ident.getValueString()));
+                        funcCnt++;
                     }
             }
         }
-
+        output.write(Encoder.toBytes(funcCnt));
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             if (globalSymbol.isFunction && globalSymbol.instructions.size() != 0) {
                 output.write(Encoder.toBytes(globalSymbol.stackOffset));
