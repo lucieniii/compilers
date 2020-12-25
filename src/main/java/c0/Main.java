@@ -28,8 +28,6 @@ public class Main {
 
     public static void testData(String inputFileName, String outputFileName) throws IOException {
 
-        if (!inputFileName.split("\\.")[1].equals("c0"))
-            return;
         InputStream input;
 
         try {
@@ -41,7 +39,7 @@ public class Main {
             return;
         }
         if (outputFileName == null)
-            outputFileName = inputFileName.split("\\.")[0] + ".c0Ana";
+            outputFileName = inputFileName.split("\\.")[0] + ".o0";
         PrintStream output;
         try {
             output = new PrintStream(new FileOutputStream(outputFileName));
@@ -85,8 +83,8 @@ public class Main {
             analyzer.analyse(output);
         } catch (Exception e) {
             // 遇到错误不输出，直接退出
-            output.println(e);
-            //System.exit(-1);
+            //output.println(e);
+            System.exit(-1);
         }
         /*output.println("Analysis accomplished!");
         for (Instruction instruction : instructions) {
