@@ -3,6 +3,10 @@
 image = { source = "dockerfile", path = ".", tag = "c0" }
 
 run = [
-  "find . -name \"Main.class\" >&2",
+  "ls main >&2",
+  "ls >&2",
+  "ls objects >&2",
+  "ls >&2",
+  "ls production >&2",
   "java main.java.c0.Main $input $asm",
 ]
