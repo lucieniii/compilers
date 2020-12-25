@@ -5,3 +5,5 @@ onetest
 *.c0Ana
 data
 *.iml
+*.c0
+*.o0
