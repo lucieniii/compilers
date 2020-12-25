@@ -43,14 +43,20 @@ public class Analyser {
 
     public ArrayList<Instruction> analyse(PrintStream output) throws CompileError {
         analyseProgram();
+        output.println("72 30 3b 3e");
+        output.println("00 00 00 01");
+        output.println(globalSymbolStack.size());
         ArrayList<Instruction> allInstructions = new ArrayList<>();
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             switch (globalSymbol.ident.getValueString()) {
                 case "putchar", "putint", "putdouble", "putln", "putstr" ,"getchar", "getint", "getdouble"
-                        -> output.println(globalSymbol.ident.toHexString(false) + " " + globalSymbol.ident.toString());
+                        -> output.println(globalSymbol.isConstant + String.format(" %08X ", globalSymbol.ident.getValueString().length()) + globalSymbol.ident.toHexString(false) + " " + globalSymbol.ident.toString());
                 default -> {
-                    if (!globalSymbol.isFunction)
-                        output.println(globalSymbol.ident.toHexString(false) + " " + globalSymbol.ident.toString());
+                    if (!globalSymbol.isFunction) {
+                        if (globalSymbol.isString)
+                            output.println(globalSymbol.isConstant + String.format(" %08X ", globalSymbol.strValue.length()) + globalSymbol.ident.toHexString(false) + " " + globalSymbol.ident.toString());
+                        else output.println(globalSymbol.isConstant + String.format(" %08X ", 8) + globalSymbol.ident.toHexString(false) + " " + globalSymbol.ident.toString());
+                    }
                 }
             }
         }
@@ -60,7 +66,7 @@ public class Analyser {
                     break;
                 default:
                     if (globalSymbol.isFunction)
-                        output.println(globalSymbol.ident.toHexString(true) + " " + globalSymbol.ident.toString());
+                        output.println(globalSymbol.isConstant + String.format(" %08X ", globalSymbol.ident.getValueString().length()) + globalSymbol.ident.toHexString(true) + " " + globalSymbol.ident.toString());
 
             }
         }

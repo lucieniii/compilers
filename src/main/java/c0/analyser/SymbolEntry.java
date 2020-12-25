@@ -67,7 +67,7 @@ public class SymbolEntry {
 
         this.level = 0;
         this.isFunctionParam = false;
-        this.isConstant = false;
+        this.isConstant = true;
         this.isInitialized = false;
         this.isFunction = true;
         this.isString = false;
@@ -88,7 +88,7 @@ public class SymbolEntry {
         this.type = null;
         this.level = 0;
         this.isFunctionParam = false;
-        this.isConstant = false;
+        this.isConstant = true;
         this.isInitialized = false;
         this.stackOffset = stackOffset;
 
