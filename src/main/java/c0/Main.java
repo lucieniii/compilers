@@ -23,10 +23,10 @@ public class Main {
                 if (!filename.equals(".DS_Store"))
                     traverseData(sourceDir + "/" + filename);
             }
-        } else testData(sourceDir);
+        } else testData(sourceDir, null);
     }
 
-    public static void testData(String inputFileName) throws IOException {
+    public static void testData(String inputFileName, String outputFileName) throws IOException {
 
         if (!inputFileName.split("\\.")[1].equals("c0"))
             return;
@@ -40,9 +40,9 @@ public class Main {
             System.exit(2);
             return;
         }
-
+        if (outputFileName == null)
+            outputFileName = inputFileName.split("\\.")[0] + ".o0";
         PrintStream output;
-        String outputFileName = inputFileName.split("\\.")[0] + ".o0";
         try {
             output = new PrintStream(new FileOutputStream(outputFileName));
         } catch (FileNotFoundException e) {
@@ -81,14 +81,12 @@ public class Main {
         }
     */
         var analyzer = new Analyser(tokenizer);
-        List<Instruction> instructions;
         try {
             analyzer.analyse(output);
         } catch (Exception e) {
             // 遇到错误不输出，直接退出
-            output.println(e);
-            // System.exit(0);
-            return;
+            //output.println(e);
+            System.exit(-1);
         }
         /*output.println("Analysis accomplished!");
         for (Instruction instruction : instructions) {
@@ -97,7 +95,8 @@ public class Main {
     }
 
     public static void main(String[] args) throws IOException {
-        traverseData("data");
+        //traverseData("data");
         //traverseData("onetest");
+        testData(args[0], args[1]);
     }
 }
