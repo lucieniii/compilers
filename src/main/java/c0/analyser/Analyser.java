@@ -610,7 +610,7 @@ public class Analyser {
             } else throw new AnalyzeError(ErrorCode.MissingBlockOrIfAfterElse, start);
         }
         codeEnd = instructions.size();
-        instructions.get(codeStart - 1).setX(codeEnd - codeStart);
+        instructions.get(codeStart - 1).setX(codeEnd - codeStart + 1);
 
         return ret && ret2;
     }
