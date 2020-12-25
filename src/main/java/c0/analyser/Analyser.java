@@ -46,7 +46,7 @@ public class Analyser {
         output.println(Encoder.EncodeToString(1915763518));
         output.println(Encoder.EncodeToString(1));
 
-        output.println(globalSymbolStack.size());
+        output.println(Encoder.EncodeToString(globalSymbolStack.size()));
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             switch (globalSymbol.ident.getValueString()) {
                 case "putchar", "putint", "putdouble", "putln", "putstr" ,"getchar", "getint", "getdouble"
@@ -86,9 +86,11 @@ public class Analyser {
 
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             if (globalSymbol.isFunction && globalSymbol.instructions.size() != 0) {
+                output.println("Name location: " + Encoder.EncodeToString(globalSymbol.stackOffset) + " ");
                 output.println("Stack size: " + Encoder.EncodeToString(globalSymbol.stackSize) + " ");
                 output.println("Params: " + Encoder.EncodeToString(globalSymbol.paramList.size()) + " ");
                 output.println("Return count: " + Encoder.EncodeToString(globalSymbol.type.getTokenType() == TokenType.VOID ? 0 : 1) + " ");
+                output.println("Instruction counting: " + Encoder.EncodeToString(globalSymbol.instructions.size()) + " ");
                 for (Instruction i : globalSymbol.instructions)
                     output.println(i.toString());
                 output.println();
@@ -139,10 +141,11 @@ public class Analyser {
 
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             if (globalSymbol.isFunction && globalSymbol.instructions.size() != 0) {
-                output.write(Encoder.toBytes(globalSymbol.instructions.size()));
+                output.write(Encoder.toBytes(globalSymbol.stackOffset));
                 output.write(Encoder.toBytes(globalSymbol.type.getTokenType() == TokenType.VOID ? 0 : 1));
                 output.write(Encoder.toBytes(globalSymbol.paramList.size()));
                 output.write(Encoder.toBytes(globalSymbol.stackSize));
+                output.write(Encoder.toBytes(globalSymbol.instructions.size()));
                 for (Instruction i : globalSymbol.instructions) {
                     output.write(i.toBytes());
                 }

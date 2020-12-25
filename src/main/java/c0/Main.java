@@ -85,8 +85,8 @@ public class Main {
             analyzer.analyse(output);
         } catch (Exception e) {
             // 遇到错误不输出，直接退出
-            //output.println(e);
-            System.exit(-1);
+            output.println(e);
+            //System.exit(-1);
         }
         /*output.println("Analysis accomplished!");
         for (Instruction instruction : instructions) {
@@ -95,8 +95,8 @@ public class Main {
     }
 
     public static void main(String[] args) throws IOException {
-        //traverseData("data");
+        traverseData("data");
         //traverseData("onetest");
-        testData(args[0], args[1]);
+        //testData(args[0], args[1]);
     }
 }
