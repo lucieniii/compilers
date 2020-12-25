@@ -1,6 +1,6 @@
-package src.main.java.c0.instruction;
+package main.java.c0.instruction;
 
-import src.main.java.c0.util.Encoder;
+import main.java.c0.util.Encoder;
 
 /**
  * navm 虚拟机指令集

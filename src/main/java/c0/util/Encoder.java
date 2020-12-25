@@ -1,4 +1,4 @@
-package src.main.java.c0.util;
+package main.java.c0.util;
 
 import java.nio.ByteBuffer;
 

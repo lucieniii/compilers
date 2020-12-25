@@ -1,10 +1,10 @@
-package src.main.java.c0.tokenizer;
+package main.java.c0.tokenizer;
 
 import java.util.ArrayList;
 import java.util.Optional;
 import java.util.Scanner;
 
-import src.main.java.c0.util.Pos;
+import main.java.c0.util.Pos;
 
 /**
  * 这是一个从 C++ 版本抄过来的字符迭代器

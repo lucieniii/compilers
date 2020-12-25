@@ -1,8 +1,8 @@
-package src.main.java.c0.tokenizer;
+package main.java.c0.tokenizer;
 
-import src.main.java.c0.error.TokenizeError;
-import src.main.java.c0.error.ErrorCode;
-import src.main.java.c0.util.Pos;
+import main.java.c0.error.TokenizeError;
+import main.java.c0.error.ErrorCode;
+import main.java.c0.util.Pos;
 
 public class Tokenizer {
     private StringIter it;

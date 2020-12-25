@@ -1,6 +1,6 @@
-package src.main.java.c0.error;
+package main.java.c0.error;
 
-import src.main.java.c0.util.Pos;
+import main.java.c0.util.Pos;
 
 public class TokenizeError extends CompileError {
     // auto-generated

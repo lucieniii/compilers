@@ -1,4 +1,4 @@
-package src.main.java.c0.error;
+package main.java.c0.error;
 
 public enum ErrorCode {
     NoError, // Should be only used internally.

@@ -1,4 +1,4 @@
-package src.main.java.c0.tokenizer;
+package main.java.c0.tokenizer;
 
 public enum TokenType {
 

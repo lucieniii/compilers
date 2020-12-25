@@ -1,7 +1,7 @@
-package src.main.java.c0.instruction;
+package main.java.c0.instruction;
 
 import java.util.Objects;
-import src.main.java.c0.util.Encoder;
+import main.java.c0.util.Encoder;
 
 public class Instruction {
     private int idx;

@@ -1,4 +1,4 @@
-package src.main.java.c0.util;
+package main.java.c0.util;
 
 public class Pos {
     public Pos(int row, int col) {

@@ -1,9 +1,9 @@
-package src.main.java.c0;
+package main.java.c0;
 
-import src.main.java.c0.analyser.Analyser;
-import src.main.java.c0.instruction.Instruction;
-import src.main.java.c0.util.*;
-import src.main.java.c0.tokenizer.*;
+import main.java.c0.analyser.Analyser;
+import main.java.c0.instruction.Instruction;
+import main.java.c0.util.*;
+import main.java.c0.tokenizer.*;
 
 import java.io.*;
 import java.util.ArrayList;
