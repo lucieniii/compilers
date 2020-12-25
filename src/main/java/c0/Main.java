@@ -1,4 +1,4 @@
-package main.java.c0;
+package src.main.java.c0;
 
 import src.main.java.c0.analyser.Analyser;
 import src.main.java.c0.instruction.Instruction;
