@@ -52,12 +52,12 @@ public class Tokenizer {
         if (c == 0)
             throw new TokenizeError(ErrorCode.IncompleteStringOrChar, start);
         if (c == '\\') {
-            char peek = it.peekChar();
+            char peek = it.nextChar();
             switch (peek) {
                 case '\\' -> {
                     return String.valueOf('\\');
                 }
-                case '"' -> {
+                case '\"' -> {
                     return String.valueOf('\"');
                 }
                 case '\'' -> {
@@ -117,6 +117,11 @@ public class Tokenizer {
         String ce;
         StringBuilder s = new StringBuilder();
         while (true) {
+            if (it.peekChar() == '\\') {
+                ce = nextCharOrEscape();
+                s.append(ce);
+                continue;
+            }
             ce = nextCharOrEscape();
             if ("\"".equals(ce)) {
                 return new Token(TokenType.STRING_LITERAL, s.toString(), start, it.currentPos());
@@ -129,7 +134,15 @@ public class Tokenizer {
     private Token lexChar() throws TokenizeError {
         Pos start = it.currentPos();
         it.nextChar(); //'
-        String ce = nextCharOrEscape();
+        String ce;
+        if (it.peekChar() == '\\') {
+            ce = nextCharOrEscape();
+            if ("'".equals(nextCharOrEscape()))
+                return new Token(TokenType.CHAR_LITERAL, ce.charAt(0), start, it.currentPos());
+            else
+                throw new TokenizeError(ErrorCode.InvalidChar, start);
+        }
+        ce = nextCharOrEscape();
         if ("'".equals(ce)) {
             throw new TokenizeError(ErrorCode.EmptyChar, start);
         } else {
