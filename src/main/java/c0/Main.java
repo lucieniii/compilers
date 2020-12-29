@@ -96,7 +96,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         //traverseData("data");
-        traverseData("onetest");
-        //testData(args[0], args[1]);
+        //traverseData("onetest");
+        testData(args[0], args[1]);
     }
 }
