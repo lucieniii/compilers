@@ -53,10 +53,27 @@ public class Tokenizer {
             throw new TokenizeError(ErrorCode.IncompleteStringOrChar, start);
         if (c == '\\') {
             char peek = it.peekChar();
-            if (peek == '\\' || peek == '"' || peek == '\'' || peek == 'n' || peek == 'r' || peek == 't')
-                return String.valueOf(c) + it.nextChar();
-            else
-                throw new TokenizeError (ErrorCode.InvalidEscapeSeq, start);
+            switch (peek) {
+                case '\\' -> {
+                    return String.valueOf('\\');
+                }
+                case '"' -> {
+                    return String.valueOf('\"');
+                }
+                case '\'' -> {
+                    return String.valueOf('\'');
+                }
+                case 'n' -> {
+                    return String.valueOf('\n');
+                }
+                case 'r' -> {
+                    return String.valueOf('\r');
+                }
+                case 't' -> {
+                    return String.valueOf('\t');
+                }
+                default -> throw new TokenizeError (ErrorCode.InvalidEscapeSeq, start);
+            }
         }
         return String.valueOf(c);
     }
