@@ -170,8 +170,8 @@ public class Analyser {
 
     public void analyse(PrintStream output) throws CompileError, IOException {
         analyseProgram();
-        //middleCodeGen(output);
-        binaryCodeGen(output);
+        middleCodeGen(output);
+        //binaryCodeGen(output);
     }
 
     /**
@@ -426,13 +426,14 @@ public class Analyser {
                 default -> throw new AnalyzeError(ErrorCode.InvalidGlobalDeclaration, start);
             }
         }
-        int mainId = -1;
+        SymbolEntry mainSymbol = null;
         for (SymbolEntry func : globalSymbolStack)
             if (func.isFunction && func.ident.getValueString().equals("main"))
-                mainId = func.stackOffset;
-        if (mainId == -1)
+                mainSymbol = func;
+        if (mainSymbol == null)
             throw new AnalyzeError(ErrorCode.NoMainFunction, start);
-        _start.instructions.add(new Instruction(_start.instructions.size() - 1, Operation.CALL, mainId, 0));
+        _start.instructions.add(new Instruction(_start.instructions.size() - 1, Operation.STACK_ALLOC, mainSymbol.type.getTokenType() != TokenType.VOID ? 1 : 0));
+        _start.instructions.add(new Instruction(_start.instructions.size() - 1, Operation.CALL, mainSymbol.stackOffset, 0));
         _start.stackSize = allMaxStack + 1;
         allMaxStack = 0;
     }
@@ -603,6 +604,7 @@ public class Analyser {
         addInstruction(new Instruction(instructions.size() - 1, Operation.BR_TRUE, 1));
         addInstruction(new Instruction(instructions.size() - 1, Operation.BR, -1));
         int codeStart = instructions.size();
+        addInstruction(new Instruction(instructions.size() - 1, Operation.BR, 0));
         boolean ret = analyseBlockStatement(fnSymbol, level + 1);
         int codeEnd = instructions.size();
         instructions.get(codeStart - 1).setX(codeEnd - codeStart + 1);
@@ -630,6 +632,7 @@ public class Analyser {
 
         expect(TokenType.WHILE_KW);
         int booleanStart = instructions.size();
+        addInstruction(new Instruction(instructions.size() - 1, Operation.BR, 0));
         analyseExpression();
         addInstruction(new Instruction(instructions.size() - 1, Operation.BR_TRUE, 1));
         addInstruction(new Instruction(instructions.size() - 1, Operation.BR, -1));
@@ -796,8 +799,8 @@ public class Analyser {
                     case L_PAREN -> {
                         if (!symbol.isFunction)
                             throw new AnalyzeError(ErrorCode.NotAFunction, start);
-                        if (symbol.type.getTokenType() != TokenType.VOID)
-                            addInstruction(new Instruction(instructions.size() - 1, Operation.STACK_ALLOC, 1));
+
+                        addInstruction(new Instruction(instructions.size() - 1, Operation.STACK_ALLOC, symbol.type.getTokenType() != TokenType.VOID ? 1 : 0));
                         expect(TokenType.L_PAREN);
                         analyseCallParamList(symbol);
                         expect(TokenType.R_PAREN);
