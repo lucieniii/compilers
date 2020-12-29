@@ -47,16 +47,21 @@ public class Analyser {
         output.println(Encoder.EncodeToString(1915763518));
         output.println(Encoder.EncodeToString(1));
 
+        int globalCnt = 0;
         output.println(Encoder.EncodeToString(globalSymbolStack.size()));
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             switch (globalSymbol.ident.getValueString()) {
                 case "putchar", "putint", "putdouble", "putln", "putstr" ,"getchar", "getint", "getdouble"
-                        -> output.println(
-                        Encoder.EncodeToString(globalSymbol.isConstant) + " " +
-                                Encoder.EncodeToString(globalSymbol.ident.getValueString().length()) + " " +
-                                Encoder.EncodeToString(globalSymbol.ident.getValueString()) + " " + globalSymbol.ident.toString());
+                        -> {
+                    globalCnt++;
+                    output.println(
+                            Encoder.EncodeToString(globalSymbol.isConstant) + " " +
+                                    Encoder.EncodeToString(globalSymbol.ident.getValueString().length()) + " " +
+                                    Encoder.EncodeToString(globalSymbol.ident.getValueString()) + " " + globalSymbol.ident.toString());
+                }
                 default -> {
                     if (!globalSymbol.isFunction) {
+                        globalCnt++;
                         if (globalSymbol.isString)
                             output.println(
                                     Encoder.EncodeToString(globalSymbol.isConstant) + " " +
@@ -90,7 +95,7 @@ public class Analyser {
         output.println("Function count: " + Encoder.EncodeToString(funcCnt));
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             if (globalSymbol.isFunction && globalSymbol.instructions.size() != 0) {
-                output.println("Name location: " + Encoder.EncodeToString(globalSymbol.stackOffset) + " ");
+                output.println("Name location: " + Encoder.EncodeToString(globalSymbol.stackOffset + globalCnt) + " ");
                 output.println("loc var count: " + Encoder.EncodeToString(globalSymbol.localVarCnt) + " ");
                 output.println("Params: " + Encoder.EncodeToString(globalSymbol.paramList.size()) + " ");
                 output.println("Return count: " + Encoder.EncodeToString(globalSymbol.type.getTokenType() == TokenType.VOID ? 0 : 1) + " ");
@@ -107,16 +112,19 @@ public class Analyser {
         output.write(Encoder.toBytes(1));
 
         output.write(Encoder.toBytes(globalSymbolStack.size()));
+        int globalCnt = 0;
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             switch (globalSymbol.ident.getValueString()) {
                 case "putchar", "putint", "putdouble", "putln", "putstr" ,"getchar", "getint", "getdouble"
                         -> {
+                        globalCnt++;
                         output.write(Encoder.toBytes(globalSymbol.isConstant));
                         output.write(Encoder.toBytes(globalSymbol.ident.getValueString().length()));
                         output.write(Encoder.toBytes(globalSymbol.ident.getValueString()));
                 }
                 default -> {
                     if (!globalSymbol.isFunction) {
+                        globalCnt++;
                         if (globalSymbol.isString) {
                             output.write(Encoder.toBytes(globalSymbol.isConstant));
                             output.write(Encoder.toBytes(globalSymbol.strValue.length()));
@@ -148,7 +156,7 @@ public class Analyser {
 
         for (SymbolEntry globalSymbol : globalSymbolStack) {
             if (globalSymbol.isFunction && globalSymbol.instructions.size() != 0) {
-                output.write(Encoder.toBytes(globalSymbol.stackOffset));
+                output.write(Encoder.toBytes(globalSymbol.stackOffset + globalCnt));
                 output.write(Encoder.toBytes(globalSymbol.type.getTokenType() == TokenType.VOID ? 0 : 1));
                 output.write(Encoder.toBytes(globalSymbol.paramList.size()));
                 output.write(Encoder.toBytes(globalSymbol.localVarCnt));
