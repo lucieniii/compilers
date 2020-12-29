@@ -650,7 +650,7 @@ public class Analyser {
                 if (bc.getX() < 0) { //continue
                     bc.setX(booleanStart - bc.getIdx() - 1);
                 } else { //break
-                    bc.setX(codeEnd - bc.getIdx());
+                    bc.setX(codeEnd - bc.getIdx() - 1);
                 }
                 if (bcStack.isEmpty())
                     break;
